@@ -1,0 +1,22 @@
+675,186,1166,661
+title=Animal|key=|type=subheader.
+title=Species|key=species|type=popup|options=None;Mouse;Fish.
+title=ID|key=id|type=string.
+title=Genetic Line|key=geneticline|type=popup|options=None;Bl6;HR1_2:TN-XL;Pcp2:Cre;PV:Cre.
+title=Genetic Line Comments|key=geneticlinecomments|type=string.
+title=Reporter Line|key=reporter|type=popup|options=None;Ai9;Ai95;Ai38.
+title=Reporter Line Comments|key=reportercomments|type=string.
+title=Eye|key=eye|type=popup|options=None;Left;Right.
+title=Experiment|key=|type=subheader.
+title=Experimenter|key=experimenter|type=string.
+title=Preparation|key=preparation|type=popup|options=None;Whole-mount;Slice.
+title=Wavelength|key=wavelength|type=string.
+title=Injected|key=injected|type=checkbox.
+title=AAV Indicator|key=injectedindicator|type=popup|options=None;ArchLightD;ArchLightDCO;ClopHensor;iGluSnFR;GCaMP5;GCaMP6;RCamP1h.
+title=Injection Comments|key=injectedcomments|type=string.
+title=Pharmacology|key=pharmacology|type=popup|options=None;Carbenoxolone;CPPG;Gabazine;Gyki;LP-4;Kainate;NBQX;TPMPA;TTX.
+title=Pharmacology Comments|key=pharmacologycomments|type=string.
+title=Electroporated|key=electroporationperformed|type=checkbox.
+title=Electroporated Indicator|key=electroporatedindicator|type=popup|options=None;Oregon Green 488 BAPTA-1.
+title=Electroporation Comments|key=electroporationcomments|type=string.
+title=Morphology|key=morphology|type=checkbox.
