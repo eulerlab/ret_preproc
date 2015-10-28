@@ -8,9 +8,7 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
 
 1. Copy all "OS" scripts into your User Procedures in My Documents
 
-2. Open "Igor Procedures/Customstart.ipf" and add the following line:
-
-`#include "OS_GUI"`
+2. Open "Igor Procedures/Customstart.ipf" and add the following line: `#include "OS_GUI"`
 
 3. Restart Igor for changes to take effect.
 
