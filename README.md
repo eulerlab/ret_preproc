@@ -21,11 +21,11 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
 
   1. `Load Parameter Table`: Creates table containing the parameters which control subsequent preprocessing scripts
 
-  2. ROI placement can be done with either `Manually` + `Apply` OR `Autom. by Correlation`
+  2. ROI placement can be done with either `Manually` + `Apply` or `Autom. by Correlation`
 
   3. `Traces & Triggers` then extracts traces and triggers from the raw data
 
-  4. OPTIONAL: `Basic Averaging` performs some simple statics and plots the ROIs in Igor
+  4. Optional: `Basic Averaging` performs some simple statics and plots the ROIs in Igor
 
   5. `Export for database` then exports files from your current data folder to the folder specified in the procedure.
 
