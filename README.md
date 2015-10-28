@@ -1,10 +1,10 @@
-## Installation and Usage Instructions
+### Installation and Usage Instructions
 Import and export hdf5 files from Igor. Import these hdf5 files to Python.
 
 Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP (Igor extension), h5py (Python Module)
 
 
-### Installing OS scripts
+#### Installing OS scripts
 
 1. Copy all "OS" scripts into your User Procedures in My Documents
 
@@ -13,7 +13,7 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
 3. Restart Igor for changes to take effect.
 
 
-### Using OS scripts (Igor)
+#### Using OS scripts (Igor)
 
 1. Run the function `"OS_GUI()"`. If you have followed the instructions listed above, this should open the GUI in Igor.
 
@@ -56,7 +56,7 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
   7. Triggervalues: ??
 
 
-### Using Import scripts (Python)
+#### Using Import scripts (Python)
 
 Python Module Dependencies: h5py, numpy, os, pandas, seaborn
 
