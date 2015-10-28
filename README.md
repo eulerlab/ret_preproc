@@ -49,11 +49,11 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
 
   4. Traces0_znorm: Traces0_raw but with normalisation
 
-  5. Tracestimes0: ??
+  5. Tracestimes0: Timestamp for each frame of each ROI (Dimension = Traces0_raw)
 
-  6. Triggertimes: ??
+  6. Triggertimes: Time (s) when trigger detected
 
-  7. Triggervalues: ??
+  7. Triggervalues: Peak value of a triggering event. Currently static.
 
 
 #### Using Import scripts (Python)
