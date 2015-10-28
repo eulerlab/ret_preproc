@@ -68,7 +68,7 @@ Note: These scripts will work in both the iPython server and desktop GUIs, but t
 
   1. importedData: The raw hdf5 data as it was imported into Python
 
-  2. preprocessedData: The data extracted from the hdf5 data, stored in a form usable in the Python environment
+  2. preprocessedData: The data extracted from the hdf5 data, stored in a form usable in the Python environment. Key:values are as follows
 
     1. OS_Parameters: Pandas DataFrame, with index labels corresponding to the labels in the original Igor Table2
 
