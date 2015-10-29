@@ -60,7 +60,7 @@ Dependencies: SARFIA (Igor procedures), ScanMLoader (Igor procedures), HDF5 XOP 
 
 Python Module Dependencies: h5py, numpy, os, pandas, seaborn
 
-Note: These scripts will work in both the iPython server and desktop GUIs, but the directory access will differ. See below.
+Note: These scripts will work in both the iPython server and desktop GUIs, but the directory access will differ.
 
 1. Change the target directory to the location of the file e.g. os.chdir('>directoryName')
 
