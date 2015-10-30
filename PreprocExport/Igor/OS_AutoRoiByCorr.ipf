@@ -36,6 +36,7 @@ variable ROI_maxsize = OS_Parameters[%ROI_maxdiameter]
 variable ROI_minpx = OS_Parameters[%ROI_minpix] 
 variable X_cut = OS_Parameters[%LightArtifact_cut]
 variable LineDuration = OS_Parameters[%LineDuration]
+variable nLifesLeft = OS_Parameters[%nRoiKillsAllowed]
 
 // data handling
 wave wParamsNum // Reads data-header
@@ -74,6 +75,9 @@ make /o/n=(nF) currentwave_comp = 0
 make /o/n=1 W_Statslinearcorrelationtest = NaN
 variable nCorr,Cumul_corr,corr_scale
 
+variable PercentDone = 0
+variable PercentPerPixel = 100/(nX*nY)
+printf "Correlation progress: "
 for (xx=X_cut;xx<nX;xx+=1)
 	for (yy=0;yy<nY;yy+=1)
 		Multithread currentwave_main[]=InputData[xx][yy][p] // get trace from "reference pixel"
@@ -96,8 +100,15 @@ for (xx=X_cut;xx<nX;xx+=1)
 		Cumul_corr-=1 // 
 		correlation_projection[xx][yy] = Cumul_corr / (((2*nPx_neighbours+1)^2)-1 ) 
 		nCorr+=1
+		PercentDone+=PercentPerPixel
 	endfor
+	if (PercentDone>=10)
+		PercentDone-=10
+		printf "#"
+	endif
 endfor
+print "# complete..."
+
 // correct edge effects 
 for (nn=0;nn<nPx_neighbours;nn+=1)
 	correlation_projection[][nn]/=((nPx_neighbours*2)/(nPx_neighbours*2+1))^(nPx_neighbours-nn) // bottom in Y
@@ -125,10 +136,18 @@ variable max_corr
 variable pix_to_frame
 variable nRois = 0
 variable Roisize = 0
+variable RoiKilled = 0
 
-
+printf "Placing ROIs: "
 do // forever loop until "while", unless "break" is triggered
 	Imagestats/Q Stack_SD_Sub
+	if (RoiKilled==1) // this bit closes the ROI placement if more than nLifesLeft ROIs were placed and subsequently killed due to min size criterion
+		nLifesLeft-=1
+		RoiKilled = 0
+		if (nLifesLeft<=0) 
+			break
+		endif
+	endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Step 1: Setup the Seed pixel
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,15 +197,17 @@ do // forever loop until "while", unless "break" is triggered
 		if (Roisize<MinPixelRoi) // if roi too small....
 			ROIs[][] = (ROIs[p][q]==10)?(1):(ROIs[p][q]) 	// kill ROI in ROI image
 			nRois-=1
+			RoiKilled = 1
 		else	 // if ROI big enough...
 			ROIs[][] = (ROIs[p][q]==10)?(((nROIs-1)*(-1))-1):(ROIs[p][q]) 	// define ROI in ROI image
 			RoiSizes[nROIs-1] = Roisize
+			printf "#"
 		endif 
 	else
 		break // finish when no more pixels respond well enough to exceed "SD_minimum"
 	endif
 while(1)
-print nRois, " ROIs placed"
+print " total of", nRois
 
 // setscale
 setscale /p x,0,px_Size,"µm" Stack_SD, ROIs
@@ -195,6 +216,13 @@ setscale /p y,0,px_Size,"µm" Stack_SD, ROIs
 // display
 if (Display_RoiMask==1)
 	display /k=1
+	ModifyGraph width={Aspect,(nX/nY)*2}
+	
+	ModifyGraph height={Aspect,1/(2*nX/nY)}
+	ModifyGraph width=800
+	doUpdate
+	ModifyGraph width=0
+	
 	Appendimage /l=YAxis /b=XAxis1 Stack_SD
 	Appendimage /l=YAxis /b=XAxis2 Stack_SD	
 	Appendimage /l=YAxis /b=XAxis2 ROIs

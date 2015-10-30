@@ -79,7 +79,7 @@ for (rr=0;rr<nRois;rr+=1)
 	setscale x,InputTraceTimes[0][rr],InputTraceTimes[nF-1][rr],"s" CurrentTrace
 	Resample/RATE=(1/LineDuration) CurrentTrace
 	variable lineshift = round(InputTraceTimes[0][rr] / LineDuration)
-	OutputTracesUpsampled[lineshift,nPoints-2*FrameDuration/LineDuration][rr] = CurrentTrace[p-lineshift] // ignores last 2 frames of original recording to avoid Array overrun
+	OutputTracesUpsampled[lineshift,nPoints-4*FrameDuration/LineDuration][rr] = CurrentTrace[p-lineshift] // ignores last 4 frames of original recording to avoid Array overrun
 endfor
 
 // Snipperting and Averaging

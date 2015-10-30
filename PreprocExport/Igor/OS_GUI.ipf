@@ -9,7 +9,8 @@
 #include "OS_hdf5Export"
 
 function OS_GUI()
-	NewPanel /k=1 /W=(1557,74,1817,516)
+	NewPanel /N=OfficialScripts /k=1 /W=(200,100,450,550)
+	ShowTools/A
 	SetDrawLayer UserBack
 	SetDrawEnv fstyle= 1
 	DrawText 24,149,"Step 3: ROI placement"
@@ -18,22 +19,23 @@ function OS_GUI()
 	SetDrawEnv fstyle= 1
 	DrawText 24,36,"Step 1: Generate Parameter Table"
 	SetDrawEnv fstyle= 1
-	DrawText 24,252,"Step 4: Extract Traces and Triggers"
+	DrawText 24,272,"Step 4: Extract Traces and Triggers"
 	SetDrawEnv fstyle= 1
-	DrawText 24,314,"Step 5: Averaging (just for display) "
+	DrawText 24,334,"Step 5: Averaging (just for display) "
 	SetDrawEnv fstyle= 1
-	DrawText 24,374,"Step 6: Generate Database files"
-	Button step1,pos={78,39},size={147,27},proc=OS_GUI_Buttonpress,title="Load Parameter Table"
-	Button step2,pos={78,93},size={147,27},proc=OS_GUI_Buttonpress,title="Detrend Stack"
-	Button step3a1,pos={78,153},size={71,18},proc=OS_GUI_Buttonpress,title="Manually"
-	Button step3a2,pos={154,153},size={71,18},proc=OS_GUI_Buttonpress,title="Apply"	
-	Button step3b,pos={78,178},size={147,19},proc=OS_GUI_Buttonpress,title="Autom. by Correlation"
-	Button step3c,pos={78,203},size={147,19},proc=OS_GUI_Buttonpress,title="Autom. CellLab (not impl.)"
-	Button step4,pos={78,258},size={147,27},proc=OS_GUI_Buttonpress,title="Traces and Triggers"
-	Button step5,pos={78,321},size={147,27},proc=OS_GUI_Buttonpress,title="Basic Averaging"
-	Button step6,pos={78,382},size={147,27},proc=OS_GUI_Buttonpress,title="Export for database"
+	DrawText 24,394,"Step 6: Generate Database files"
+	Button step1,pos={78,39},size={147,26},proc=OS_GUI_Buttonpress,title="Load Parameter Table"
+	Button step2a,pos={78,94},size={71,26},proc=OS_GUI_Buttonpress,title="One Channel"
+	Button step2b,pos={154,94},size={71,26},proc=OS_GUI_Buttonpress,title="Ratiometric"
+	Button step3a1,pos={78,155},size={71,20},proc=OS_GUI_Buttonpress,title="Manually"
+	Button step3a2,pos={154,155},size={71,20},proc=OS_GUI_Buttonpress,title="Apply"
+	Button step3a3,pos={78,179},size={147,20},proc=OS_GUI_Buttonpress,title="Use existing SARFIA Mask"	
+	Button step3b,pos={78,203},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. by Correlation"
+	Button step3c,pos={78,228},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. CellLab (not impl.)"
+	Button step4,pos={78,278},size={147,26},proc=OS_GUI_Buttonpress,title="Traces and Triggers"
+	Button step5,pos={78,341},size={147,26},proc=OS_GUI_Buttonpress,title="Basic Averaging"
+	Button step6,pos={78,402},size={147,26},proc=OS_GUI_Buttonpress,title="Export for database"
 	
-
 	HideTools/A
 end
 
@@ -49,15 +51,21 @@ Function OS_GUI_Buttonpress(ba) : ButtonControl
 				case "step1":
 					OS_ParameterTable()
 					break
-				case "step2":
+				case "step2a":
 					OS_DetrendStack()
 					break
+				case "step2b":
+					OS_DetrendRatiometric()
+					break					
 				case "step3a1":
 					OS_CallManualROI()
 					break
 				case "step3a2":
 					OS_ApplyManualRoi()
-					break										
+					break	
+				case "step3a3":
+					OS_CloneSarfiaRoi()
+					break																		
 				case "step3b":
 					OS_AutoRoiByCorr()
 					break

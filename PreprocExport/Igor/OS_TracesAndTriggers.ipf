@@ -46,6 +46,7 @@ variable levelread_nY_after_trigger = OS_Parameters[%Trigger_levelread_after_lin
 variable nSeconds_prerun_reference = OS_Parameters[%Baseline_nSeconds]
 variable TriggerHeight_Display = OS_Parameters[%Trigger_DisplayHeight] 
 variable LineDuration = OS_Parameters[%LineDuration]
+variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
 
 // data handling
 string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
@@ -68,6 +69,7 @@ make /o/n=(nF,nRois) OutputTraces_zscore = 0
 make /o/n=(nF,nRois) OutputTraceTimes = 0
 make /o/n=(nF) OutputTriggerTimes = NaN
 make /o/n=(nF) OutputTriggerValues = NaN
+variable FrameDuration = nY * LineDuration
 
 // call SARFIA function GeoC to get ROI positions
 GeometricCenter(ROIs)
@@ -107,7 +109,7 @@ for (rr=0;rr<nRois;rr+=1)
 		endfor
 	endfor
 	OutputTraces_raw[][rr]/=ROI_size // now is average activity of ROI
-	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p][rr]
+	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
 	Wavestats/Q BaselineTrace
 	OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
 	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][0]*LineDuration // correct each ROIs timestamp by it's Y position in the scan
@@ -148,6 +150,12 @@ if (Display_traces==1)
 		DrawLine OutputTriggerTimes[tt],-TriggerHeight_Display,OutputTriggerTimes[tt],TriggerHeight_Display
 		HideTools/A
 	endfor
+	
+	// baseline window
+	•ShowTools/A arrow
+	•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
+	•DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
+	HideTools/A
 endif
 
 // cleanup

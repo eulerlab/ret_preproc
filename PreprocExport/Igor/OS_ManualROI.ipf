@@ -48,13 +48,15 @@ for (xx=X_cut;xx<nX;xx+=1)
 		Stack_SD[xx][yy]=V_SDev
 	endfor
 endfor
-setscale /p x,0,px_Size,"µm" Stack_SD
-setscale /p y,0,px_Size,"µm" Stack_SD
+setscale /p x,0,px_Size,"µm" Stack_SD, ROIs
+setscale /p y,0,px_Size,"µm" Stack_SD, ROIs
 
 // display SD wave
-Newimage /k=1 Stack_SD
+Display /k=1 
+Appendimage Stack_SD
 Appendimage ROIs
 ModifyImage ROIs explicit=1,eval={-1,65535,0,0}
+ModifyGraph height={Aspect,nY/nX}
 WMCreateImageROIPanel() // calls SARFIA Roi generator - if follow that through it gives a wave 
 
 // cleanup
@@ -62,7 +64,9 @@ killwaves currentwave,InputData
 
 end
 
-////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function OS_ApplyManualRoi()
 
@@ -80,8 +84,6 @@ variable zoom = wParamsNum(30) // extract zoom
 variable px_Size = (0.65/zoom * 110)/nX // microns
 setscale /p x,0,px_Size,"µm" ROIs
 setscale /p y,0,px_Size,"µm" ROIs
-
-
 
 // create proper ROI Mask from M_ROIMask
 duplicate /o M_ROIMask ROIbw_sub // make a lookup wave
@@ -125,7 +127,95 @@ endfor
 // cleanup
 killwaves ROIbw_sub, ROIs_add,M_Colors
 
-print RoiValue*(-1) ,"ROIs generated"
+print RoiValue*(-1) ,"ROIs generated manually"
+
+
+end
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function OS_CloneSarfiaRoi()
+
+// 1 // check for existing Sarfia Mask from Laplace Operator thing
+if (waveexists($"MTROIWave")==0)
+	print "Warning: MTROIWave does not exist - doing nothing..."
+else	
+	
+	wave MTROIWave
+		
+	wave OS_Parameters
+	// flags from "OS_Parameters"
+	variable X_cut = OS_Parameters[%LightArtifact_cut]
+	variable LineDuration = OS_Parameters[%LineDuration]
+	variable Channel = OS_Parameters[%Data_Channel]
+	
+	// data handling
+	wave wParamsNum // Reads data-header
+	string input_name = "wDataCh"+Num2Str(Channel)+"_detrended"
+	duplicate /o $input_name InputData
+	variable nX = DimSize(InputData,0)
+	variable nY = DimSize(InputData,1)
+	variable nF = DimSize(InputData,2)
+	variable Framerate = 1/(nY * LineDuration) // Hz 
+	variable Total_time = (nF * nX ) * LineDuration
+	print "Recorded ", total_time, "s @", framerate, "Hz"
+	
+	variable xx,yy,rr
+	
+	// calculate Pixel / ROI sizes in microns
+	variable zoom = wParamsNum(30) // extract zoom
+	variable px_Size = (0.65/zoom * 110)/nX // microns
+	print "Pixel Size:", round(px_size*100)/100," microns"
+	
+	// make SD average
+	make /o/n=(nX,nY) Stack_SD = 0 // Avg projection of InputData
+	make /o/n=(nX,nY) ROIs = 1 // empty ROI wave
+	make /o/n=(nF) currentwave = 0
+	for (xx=X_cut;xx<nX;xx+=1)
+		for (yy=0;yy<nY;yy+=1)
+			Multithread currentwave[]=InputData[xx][yy][p] // get trace from "reference pixel"
+			Wavestats/Q currentwave
+			Stack_SD[xx][yy]=V_SDev
+		endfor
+	endfor
+	setscale /p x,0,px_Size,"µm" Stack_SD, ROIs
+	setscale /p y,0,px_Size,"µm" Stack_SD, ROIs
+	
+	// display SD wave
+	Display /k=1
+	Appendimage Stack_SD
+	Appendimage ROIs
+	ModifyImage ROIs explicit=1,eval={-1,65535,0,0}
+	ModifyGraph height={Aspect,nY/nX}
+	
+	// take MTROIWave and work out if it's dimensions are cropped in X axis (e.g. to get rid of light artifact before using the Laplace)
+	Variable nX_MTROIWave = Dimsize(MTRoiWave,0)
+	
+	// Project MTROIwave onto ROIs with correct x offset
+	ROIs[nX-nX_MTROIWave,nX-1][]=MTROIWave[p-(nX-nX_MTROIWave)][q]
+	
+	// colour in the ROIs
+	make /o/n=(1) M_Colors
+	Colortab2Wave Rainbow256
+	variable nRois = Wavemin(ROIs)*(-1)
+	for (rr=0;rr<nRois;rr+=1)
+		variable colorposition = 255 * (rr+1)/nRois
+		ModifyImage ROIs explicit=1,eval={-rr-1,M_Colors[colorposition][0],M_Colors[colorposition][1],M_Colors[colorposition][2]}
+	endfor
+	
+	print "ROIs generated from SARFIA Mask"
+		
+	// cleanup
+	killwaves currentwave,InputData
+
+endif
+
+end
+
+
+
 
 
 end

@@ -13,6 +13,10 @@ SetDimLabel 0,entry_position,Data_Channel,OS_Parameters
 OS_Parameters[%Data_Channel] = 0 // Fluorescence Data in wDataChX - default 0
 entry_position+=1
 
+SetDimLabel 0,entry_position,Data_Channel2,OS_Parameters
+OS_Parameters[%Data_Channel2] = 1 // Fluorescence Data in wDataChX - default 1 (for Ratiometric)
+entry_position+=1
+
 SetDimLabel 0,entry_position,Trigger_Channel,OS_Parameters
 OS_Parameters[%Trigger_Channel] = 2 // Trigger Data in wDataChX - default 2 
 entry_position+=1
@@ -33,6 +37,10 @@ entry_position+=1
 
 SetDimLabel 0,entry_position,Detrend_smooth_window,OS_Parameters
 OS_Parameters[%Detrend_smooth_window] = 1000 // smoothing window in seconds - default 1000
+entry_position+=1
+
+SetDimLabel 0,entry_position,Detrend_RatiometricData,OS_Parameters
+OS_Parameters[%Detrend_RatiometricData] = 0 // Does Ratiometric data get detrended (1) or just combined (0)? - default 0
 entry_position+=1
 
 /// ROI PLACEMENT /////////////////////////////////////////////////////////////////////////////////////
@@ -57,6 +65,10 @@ SetDimLabel 0,entry_position,ROI_minpix,OS_Parameters
 OS_Parameters[%ROI_minpix] = 3 // minimum number of pixels per ROI, overrides ROI_mindiameter - default 3
 entry_position+=1
 
+SetDimLabel 0,entry_position,nRoiKillsAllowed,OS_Parameters
+OS_Parameters[%nRoiKillsAllowed] = 10 // nRois that get killed due to size minimum before the routine aborts trying to place more  - default 10
+entry_position+=1
+
 /// TRACE AND TRIGGER EXTRACTION  ///////////////////////////////////////////////////////////
 
 SetDimLabel 0,entry_position,Trigger_Threshold,OS_Parameters
@@ -79,6 +91,10 @@ SetDimLabel 0,entry_position,Baseline_nSeconds,OS_Parameters
 OS_Parameters[%Baseline_nSeconds] = 5  // takes the 1st n seconds to calculate the baseline noise (for z-normalisation) - default 5
 entry_position+=1
 
+SetDimLabel 0,entry_position,Ignore1stXseconds,OS_Parameters
+OS_Parameters[%Ignore1stXseconds] = 1 // for baseline extraction & for averaging across triggers (below): ignores X 1st seconds of triggers
+entry_position+=1
+
 /// BASIC AVERAGING  /////////////////////////////////////////////////////////////////////////
 
 SetDimLabel 0,entry_position,Use_Znorm,OS_Parameters
@@ -86,12 +102,10 @@ OS_Parameters[%Use_Znorm] = 1 // use znormalised or raw traces (0/1) - default 1
 entry_position+=1
 
 SetDimLabel 0,entry_position,Trigger_Mode,OS_Parameters
-OS_Parameters[%Trigger_Mode] = 2 // Use every nth trigger - default 2
+OS_Parameters[%Trigger_Mode] = 1 // Use every nth trigger - default 1
 entry_position+=1
 
-SetDimLabel 0,entry_position,Ignore1stXseconds,OS_Parameters
-OS_Parameters[%Ignore1stXseconds] = 0 // For averaging across triggers, Ignore X 1st seconds of triggers
-entry_position+=1
+
 
 
 
