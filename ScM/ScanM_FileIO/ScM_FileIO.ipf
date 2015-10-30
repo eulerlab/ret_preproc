@@ -45,7 +45,8 @@
 constant		SCMIO_addCFDNote			= 0
 constant		SCMIO_integrStim_StimCh	= 2
 constant		SCMIO_integrStim_TargetCh	= 0
-constant		SCMIO_Stim_toFractOfMax	= 1
+constant		SCMIO_doIntegrStim_default= 0
+constant		SCMIO_Stim_toFractOfMax	= 0
 constant		SCMIO_to8Bits				= 0
 constant		SCMIO_to8Bits_min			= 10500
 constant		SCMIO_to8Bits_max			= 13200
@@ -214,7 +215,7 @@ End
 // ----------------------------------------------------------------------------------
 function/WAVE CreateSCIOParamsWave ()
 
-	variable 	doIntegrStim 	= NumVarOrDefault("root:ScMIO_doIntegrStim", 1)
+	variable 	doIntegrStim 	= NumVarOrDefault("root:ScMIO_doIntegrStim", SCMIO_doIntegrStim_default)
 	
 	Make/O/N=(SCMIO_Param_lastEntry +1) wSCIOParams
 	wSCIOParams		= 0
@@ -275,14 +276,14 @@ end
 
 // ----------------------------------------------------------------------------------
 function	ToggleMne_IntegrStim ()
-	Variable prevMode 						= NumVarOrDefault("root:ScMIO_doIntegrStim", 1)
+	Variable prevMode 						= NumVarOrDefault("root:ScMIO_doIntegrStim", SCMIO_doIntegrStim_default)
 	Variable/G root:ScMIO_doIntegrStim	= !prevMode
 end
 
 
 function/S	mneMacrosToggleIntegrStim ()
 
-	variable doIntegrStim 	= NumVarOrDefault("root:ScMIO_doIntegrStim", 1)
+	variable doIntegrStim 	= NumVarOrDefault("root:ScMIO_doIntegrStim", SCMIO_doIntegrStim_default)
 	if(doIntegrStim)
 		return "!"+num2char(18)+SCMIO_mne_ToggleIntegrStim
 	else
