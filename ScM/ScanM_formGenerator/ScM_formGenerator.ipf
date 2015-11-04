@@ -53,6 +53,8 @@
 // -------------------------------------------------------------------------------------
 strconstant		sNameTemplateFile	= "template.txt"
 strconstant		sFExt_HeaderFile	= ".ini" 
+strconstant		sFileFilter_Ini	= "Experiment Header File (*.ini):.ini;"
+strconstant 	sFileIniOpenDialog	= "Select an Experiment Header File ..."
 
 strconstant		sValType_uint8		= "uint8"
 strconstant		sValType_int32   	= "int32"
@@ -61,15 +63,27 @@ strconstant		sValType_float   	= "float"
 strconstant		sValType_string	= "string"
 strconstant		sValType_bool		= "bool"
 
+constant		GUIEntry_string	= 0
+constant		GUIEntry_float		= 1
+constant		GUIEntry_uint8		= 2
+constant		GUIEntry_int32		= 3
+constant		GUIEntry_uint32	= 4
+constant		GUIEntry_checkbox	= 5
+constant		GUIEntry_popup		= 6
+constant		GUIEntry_list		= 7
+constant		GUIEntry_subheader	= 99
+
+
 // -------------------------------------------------------------------------------------
 function FG_createForm()
 
-	string 		sEntries 
+	string 		sEntries, sFullFName 
 	string 		sTitle, sType, sTemp, sEntry, sKey, sOpts, sFirst, sWinName
+	string		sRange, sDefault, sDigits, sFormat
 	variable	xPos, yPos, dxVal, dxTitle, dy, iEntry, nEntr
 	variable   wPosx1, wPosx2, wPosy1, wPosy2
 	variable	isDummyEntry
-	variable	refNum, errCode, len, nLine
+	variable	refNum, errCode, len, nLine, vMin, vMax
 	 
 	sEntries	= ""
 	refNum		= 0
@@ -79,7 +93,13 @@ function FG_createForm()
 	try
 		// Open the template file
 		//	
-		Open/R/Z=2/P=home refNum as sNameTemplateFile
+		PathInfo Igor_related
+		if(strlen(S_path) == 0)
+			sFullFName	= sNameTemplateFile
+		else
+			sFullFName	= S_path +sNameTemplateFile
+		endif	
+		Open/R/Z=2 refNum as sFullFName
 		errCode		= V_flag	
 		AbortOnValue (errCode != 0), -1
 		do
@@ -126,65 +146,126 @@ function FG_createForm()
 	yPos	= 10
 	dxTitle	= 200
 	dxVal	= 250
-	dy		= 22
+	dy		= 21
 	
 	nEntr	= ItemsInList(sEntries, ".")
-	Make/O/T/N=(nEntr)	wValStr, wKeyStr
-	Make/O/N=(nEntr)	wVal
+	Make/O/T/N=(nEntr)	wValStr, wKeyStr, wOptStr
+	Make/O/N=(nEntr)	wVal, wGUIType
 
 	sTemp	= GetDataFolder(1)
 	SetDataFolder root:
-	String/G formGenTables			= "wValStr;wKeyStr;wVal;" 
+	String/G formGenTables			= "wValStr;wKeyStr;wVal;wOptStr;wGUIType" 
 	String/G formGenFolder			= sTemp
 	String/G formGenWinName		= sWinName
 	Variable/G formGenWinHeight	= wPosy2 -wPosy1
+	Variable/G formGenWinIsScroll	= 0
 	SetDataFolder $(sTemp)
 	
 	DoWindow/F $sWinName
 	if(V_flag)
 		DoWindow/K $sWinName
 	endif	
-	NewPanel/N=$sWinName /W=(wPosx1, wPosy1, wPosx2, wPosy2)
+	NewPanel/K=2/N=$sWinName /W=(wPosx1, wPosy1, wPosx2, wPosy2)
 	
 	for(iEntry=0; iEntry<nEntr; iEntry+=1)
-		sEntry	= StringFromList(iEntry, sEntries, ".")
-		sTitle	= StringByKey("title", sEntry, "=", "|")
-		sType	= StringByKey("type", sEntry, "=", "|")
-		sKey	= StringByKey("key", sEntry, "=", "|")
+		sEntry		= StringFromList(iEntry, sEntries, ".")
+		sTitle		= StringByKey("title", sEntry, "=", "|")
+		sType		= StringByKey("type", sEntry, "=", "|")
+		sKey		= StringByKey("key", sEntry, "=", "|")
+		sDefault	= StringByKey("default", sEntry, "=", "|")
+		sRange		= StringByKey("range", sEntry, "=", "|")
+		sDigits		= StringByKey("digits", sEntry, "=", "|")		
+
 		isDummyEntry	= 0 
 	
 		sTemp  	= "title" +Num2Str(iEntry)
 		TitleBox $(sTemp), pos={xPos, yPos +dy*iEntry}, size={dxTitle, dy} 
 		TitleBox $(sTemp), title=sTitle, frame=0
 	
-		//s=string, u=uint32, f=float(real32), ...
 		strswitch(sType)
 			case "string":
-				sTemp  	= "setVar_" +sKey //Num2Str(iEntry)		
+				sTemp  	= "setVar_" +sKey
 				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
 				SetVariable $(sTemp), value=wValStr[iEntry],  title=" "
 				sKey	= sValType_string +"_" +sKey
 				wVal[iEntry]	= -1
+				wGUIType[iEntry]	= GUIEntry_string
+				if(StringMatch(sKey, "*_date"))
+					wValStr	[iEntry]	= Secs2Date(datetime,-2) +"_" +Secs2Time(datetime, 3) 
+					SetVariable $(sTemp), value=wValStr[iEntry], disable=2
+				endif
 				break
 				
 			case "float":
-				// ...
+				sTemp  	= "setVar_" +sKey
+				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
+				SetVariable $(sTemp), format="%.3f", title=" "
+				if(strlen(sRange) > 0)
+					vMin	= Str2Num(StringFromList(0, sRange, ";"))
+					vMax	= Str2Num(StringFromList(1, sRange, ";"))
+					SetVariable $(sTemp), limits={vMin, vMax, 1}
+				endif	
 				sKey	= sValType_float +"_" +sKey
+				if(strlen(sDefault) > 0)
+					wVal[iEntry]	= Str2Num(sDefault)
+					SetVariable $(sTemp), value=wVal[iEntry] 
+				endif	
+				if(strlen(sDigits) > 0)	
+					sprintf sFormat, ".%df", Str2Num(sDigits)			
+					SetVariable $(sTemp), format=("%" +sFormat)
+				endif						
+				wGUIType[iEntry]	= GUIEntry_float
 				break					
 
 			case "uint8":
-				// ...
+				sTemp  	= "setVar_" +sKey
+				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
+				SetVariable $(sTemp), format="%d", title=" "
+				if(strlen(sRange) > 0)
+					vMin	= Str2Num(StringFromList(0, sRange, ";"))
+					vMax	= Str2Num(StringFromList(1, sRange, ";"))
+					SetVariable $(sTemp), limits={vMin, vMax, 1}
+				endif	
 				sKey	= sValType_uint8 +"_" +sKey
+				if(strlen(sDefault) > 0)
+					wVal[iEntry]	= Str2Num(sDefault)
+					SetVariable $(sTemp), value=wVal[iEntry] 
+				endif	
+				wGUIType[iEntry]	= GUIEntry_uint8
 				break					
 
 			case "int32":
-				// ...
+				sTemp  	= "setVar_" +sKey
+				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
+				SetVariable $(sTemp), format="%d", title=" "
+				if(strlen(sRange) > 0)
+					vMin	= Str2Num(StringFromList(0, sRange, ";"))
+					vMax	= Str2Num(StringFromList(1, sRange, ";"))
+					SetVariable $(sTemp), limits={vMin, vMax, 1}
+				endif	
 				sKey	= sValType_int32 +"_" +sKey
+				if(strlen(sDefault) > 0)
+					wVal[iEntry]	= Str2Num(sDefault)
+					SetVariable $(sTemp), value=wVal[iEntry] 
+				endif	
+				wGUIType[iEntry]	= GUIEntry_int32
 				break					
 
 			case "uint32":
-				// ...
+				sTemp  	= "setVar_" +sKey
+				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
+				SetVariable $(sTemp), format="%d", title=" "
+				if(strlen(sRange) > 0)
+					vMin	= Str2Num(StringFromList(0, sRange, ";"))
+					vMax	= Str2Num(StringFromList(1, sRange, ";"))
+					SetVariable $(sTemp), limits={vMin, vMax, 1}
+				endif	
 				sKey	= sValType_uint32 +"_" +sKey
+				if(strlen(sDefault) > 0)
+					wVal[iEntry]	= Str2Num(sDefault)
+					SetVariable $(sTemp), value=wVal[iEntry] 
+				endif	
+				wGUIType[iEntry]	= GUIEntry_uint32
 				break					
 
 			case "checkbox":
@@ -192,18 +273,42 @@ function FG_createForm()
 				CheckBox $(sTemp), pos={xPos +dxTitle-1, yPos +dy*iEntry}
 				CheckBox $(sTemp), proc=FG_onFormCheckProc,  title=" "
 				sKey	= sValType_bool +"_" +sKey
+				wGUIType[iEntry]	= GUIEntry_checkbox
 				break
 
 			case "popup":
 				sOpts	= StringByKey("options", sEntry, "=", "|")
 				sFirst	= StringFromList(0, sOpts)	
-				wValStr[iEntry]	= sOpts				
+				wOptStr[iEntry]	= sOpts				
 				sOpts	= "\"" +sOpts +"\""
 				sTemp  	= "popup_" +sKey //Num2Str(iEntry)		
 				PopupMenu $(sTemp), pos={xPos +dxTitle-6, yPos +dy*iEntry-4}
 				PopupMenu $(sTemp), title=" ", proc=FG_onFormPopMenuProc
 				PopupMenu $(sTemp), mode=1, popvalue=sFirst, value= #sOpts
 				sKey	= sValType_string +"_" +sKey
+				wGUIType[iEntry]	= GUIEntry_popup
+				break
+				
+			case "list":
+				sOpts	= StringByKey("options", sEntry, "=", "|")
+				sFirst	= StringFromList(0, sOpts)	
+				wOptStr[iEntry]	= sOpts				
+				sOpts	= "\"" +sOpts +"\""
+				sTemp  	= "popup_" +sKey
+				PopupMenu $(sTemp), pos={xPos +dxTitle +dxVal, yPos +dy*iEntry-4}
+				PopupMenu $(sTemp), title=" ", proc=FG_onFormPopMenuProc
+				PopupMenu $(sTemp), mode=0, popvalue=sFirst, value= #sOpts
+
+				sTemp  	= "button_" +sKey
+				Button $(sTemp), pos={xPos +dxTitle-6 +dxVal +38, yPos +dy*iEntry-4},size={45,20},title="Clear"
+				Button $(sTemp), proc=FG_onFormButtonProc
+
+				sTemp  	= "setVar_" +sKey
+				SetVariable $(sTemp), pos={xPos +dxTitle, yPos +dy*iEntry-2}, size={dxVal, 20}
+				SetVariable $(sTemp), value=wValStr[iEntry],  title=" ", noedit=1
+				sKey	= sValType_string +"_" +sKey
+				wVal[iEntry]	= -1
+				wGUIType[iEntry]	= GUIEntry_list
 				break
 
 			case "subheader":
@@ -211,6 +316,7 @@ function FG_createForm()
 				TitleBox $(sTemp), fstyle=1
 				//isDummyEntry	= 1
 				sKey	= "[" +sTitle +"]"
+				wGUIType[iEntry]	= GUIEntry_subheader
 				break
 
 		endswitch		
@@ -219,6 +325,9 @@ function FG_createForm()
 		endif	
 	endfor	
 	
+	Button buttonSave,pos={xPos +dxTitle, yPos +dy*iEntry-2},size={100,20},proc=FG_onFormButtonProc,title="Save"
+	Button buttonSaveExit,pos={xPos +dxTitle +108, yPos +dy*iEntry-2},size={100,20},proc=FG_onFormButtonProc,title="Save & Exit"
+
 	SetWindow $(sWinName) hook(scroll)=FG_panelScrollHook
 end
 	
@@ -249,14 +358,29 @@ function FG_onFormPopMenuProc(pa) : PopupMenuControl
 	variable	iEntr
 	SVAR		sPath		= $("root:formGenFolder")
 	SVAR		sTables		= $("root:formGenTables")	
-	WAVE		pwVal		= $(sPath +StringFromList(2, sTables))
-	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
+	NVAR		isScroll	= $("root:formGenWinIsScroll")
 
+	WAVE		pwVal		= $(sPath +StringFromList(2, sTables))
+	WAVE		wGUIType	= $(sPath +StringFromList(4, sTables))	
+	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
+	WAVE/T		pwOptStr	= $(sPath +StringFromList(3, sTables))
+
+	if(isScroll)
+		return 0
+	endif
 	switch( pa.eventCode )
 		case 2: // mouse up
-			Variable popNum = pa.popNum
 			iEntr			= FG_getIndex(sValType_string +"_" +StringByKey("popup", pa.ctrlName, "_"))
-			pwVal[iEntr]	= pa.popNum
+			if(wGUIType[iEntr] == GUIEntry_popup)
+				pwVal[iEntr]	= pa.popNum
+			elseif(wGUIType[iEntr] == GUIEntry_list)	
+				if(!StringMatch(pwValStr[iEntr], "*" +pa.popStr +"*"))
+					if(strlen(pwValStr[iEntr]) > 0)
+						pwValStr[iEntr] 	+= ";"
+					endif
+					pwValStr[iEntr] 	+= pa.popStr
+				endif	
+			endif
 			break
 		case -1: // control being killed
 			break
@@ -264,6 +388,40 @@ function FG_onFormPopMenuProc(pa) : PopupMenuControl
 
 	return 0
 End
+
+
+function FG_onFormButtonProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+
+	variable	iEntr
+	SVAR		sPath		= $("root:formGenFolder")
+	SVAR		sTables		= $("root:formGenTables")	
+	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
+
+	switch( ba.eventCode )
+		case 2: // mouse up
+			strswitch(ba.ctrlName)
+				case "buttonSave":
+					FG_saveToINIFile("", "", 0)
+					break
+					
+				case "buttonSaveExit":
+					FG_saveToINIFile("", "", 0)
+					DoWindow/K $(ba.win)
+					break
+					
+				default:	
+					iEntr	= FG_getIndex(sValType_string +"_" +StringByKey("button", ba.ctrlName, "_"))
+					pwValStr[iEntr]	= ""
+					break
+			endswitch
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+end
 
 // -------------------------------------------------------------------------------------	
 //	Update form from key-value lists
@@ -278,36 +436,48 @@ function FG_updateForm ()
 	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
 	WAVE/T		pwKeyStr	= $(sPath +StringFromList(1, sTables))
 	WAVE		pwVal		= $(sPath +StringFromList(2, sTables))
-
+	WAVE		wGUIType	= $(sPath +StringFromList(4, sTables))	
+	WAVE/T		pwOptStr	= $(sPath +StringFromList(3, sTables))
+	
 	DoWindow/F $(sWinName)
 	
 	for(iEntr=0; iEntr<DimSize(pwValStr, 0); iEntr+=1)
 		// Update all entries
 		//			
 		if(StringMatch(pwKeyStr[iEntr], sValType_string +"*"))
-			if(pwVal[iEntr] < 0)
+			if((wGUIType[iEntr] == GUIEntry_string) || (wGUIType[iEntr] == GUIEntry_list))
 				sTemp  	= "setVar_" +StringByKey(sValType_string, pwKeyStr[iEntr], "_")
 				SetVariable $(sTemp), value=pwValStr[iEntr] 
-			else
+
+			elseif(wGUIType[iEntr] == GUIEntry_popup)
 				sTemp  	= "popup_" +StringByKey(sValType_string, pwKeyStr[iEntr], "_")
 				PopupMenu $(sTemp),mode=pwVal[iEntr]
-			endif	
+			endif
 				
 		elseif(StringMatch(pwKeyStr[iEntr], sValType_bool +"*"))
 			sTemp  	= "check_" +StringByKey(sValType_bool, pwKeyStr[iEntr], "_")
 			CheckBox $(sTemp), value=pwVal[iEntr]
 				
 		elseif(StringMatch(pwKeyStr[iEntr], sValType_uint8 +"*"))		   	       
+			sTemp  	= "setVar_" +StringByKey(sValType_uint8, pwKeyStr[iEntr], "_")
+			SetVariable $(sTemp), value=pwVal[iEntr] 
 
 		elseif(StringMatch(pwKeyStr[iEntr], sValType_uint32 +"*"))		   	       
+			sTemp  	= "setVar_" +StringByKey(sValType_uint32, pwKeyStr[iEntr], "_")
+			SetVariable $(sTemp), value=pwVal[iEntr] 
 
 		elseif(StringMatch(pwKeyStr[iEntr], sValType_int32 +"*"))
+			sTemp  	= "setVar_" +StringByKey(sValType_int32, pwKeyStr[iEntr], "_")
+			SetVariable $(sTemp), value=pwVal[iEntr] 
 				
 		elseif(StringMatch(pwKeyStr[iEntr], sValType_float +"*"))
+			sTemp  	= "setVar_" +StringByKey(sValType_float, pwKeyStr[iEntr], "_")
+			SetVariable $(sTemp), value=pwVal[iEntr] 
 		
 		endif
 	endfor
 end
+
 
 // -------------------------------------------------------------------------------------	
 //	Update key-value lists from .ini file
@@ -329,8 +499,12 @@ function FG_updateKeyValueLists (sFPath, sFName)
 	try
 		// Try reading the .ini file
 		//	
-		sFullFName	= sFPath + "\\" +sFName +sFExt_HeaderFile
-		Open/R/Z refNum as sFullFName
+		if(strlen(sFName) == 0)
+			sFullFName	= ""
+		else	
+			sFullFName	= sFPath + "\\" +sFName +sFExt_HeaderFile
+		endif	
+		Open/Z=2/R/T=sFExt_HeaderFile/F=sFileFilter_Ini refNum as sFullFName
 		errCode		= V_flag	
 		AbortOnValue (errCode != 0), -1 // File does not exist
 		do
@@ -438,6 +612,8 @@ function FG_saveToINIFile (sFPath, sFName, doOverwrite)
 	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
 	WAVE/T		pwKeyStr	= $(sPath +StringFromList(1, sTables))
 	WAVE		pwVal		= $(sPath +StringFromList(2, sTables))
+	WAVE		wGUIType	= $(sPath +StringFromList(4, sTables))	
+	WAVE/T		pwOptStr	= $(sPath +StringFromList(3, sTables))
 
 	try
 		// Check the experiment header file; if it exists, respond as the user
@@ -458,7 +634,8 @@ function FG_saveToINIFile (sFPath, sFName, doOverwrite)
 		
 		// Now open the experiment header file for writing
 		//
-		Open/Z=2 refNum as sFullFName
+		Open/Z=2/T=sFExt_HeaderFile/F=sFileFilter_Ini refNum as sFullFName
+		AbortOnValue (strlen(S_fileName) == 0), 0
 		for(iEntr=0; iEntr<DimSize(pwValStr, 0); iEntr+=1)
 			// Add all entries
 			//			
@@ -469,12 +646,11 @@ function FG_saveToINIFile (sFPath, sFName, doOverwrite)
 				fprintf refNum, "%s\r\n", pwKeyStr[iEntr]
 				
 			elseif(StringMatch(pwKeyStr[iEntr], sValType_string +"*"))
-				if(pwVal[iEntr] < 0)
+				if((wGUIType[iEntr] == GUIEntry_string) || (wGUIType[iEntr] == GUIEntry_list))
 					fprintf refNum, "%s=%s\r\n", pwKeyStr[iEntr], pwValStr[iEntr]
-				else	
-					print pwVal[iEntr], pwKeyStr[iEntr], pwValStr[iEntr]
-					fprintf refNum, "%s=%s\r\n", pwKeyStr[iEntr], StringFromList(pwVal[iEntr]-1, pwValStr[iEntr])
-				endif	
+				elseif(wGUIType[iEntr] == GUIEntry_popup)
+					fprintf refNum, "%s=%s\r\n", pwKeyStr[iEntr], StringFromList(pwVal[iEntr]-1, pwOptStr[iEntr])
+				endif
 				
 			elseif(StringMatch(pwKeyStr[iEntr], sValType_bool +"*"))
 				if(pwVal[iEntr] > 0)
@@ -525,6 +701,7 @@ Function FG_panelScrollHook(info)
 
 	SVAR		sWinName	= $("root:formGenWinName")	
 	NVAR		winHeight	= $("root:formGenWinHeight")
+	NVAR		isScroll	= $("root:formGenWinIsScroll")
 	variable	y1, y2
 
 	if(!StringMatch(info.WinName, sWinName))
@@ -538,15 +715,19 @@ Function FG_panelScrollHook(info)
 			// table subwindow.
 			//
 			Variable mouseIsOverSubWindow= ItemsInList(info.WinName,"#") > 1
-			if( !mouseIsOverSubWindow )
+			if(!mouseIsOverSubWindow)
 				String controls = ControlNameList(info.winName)
 				ControlInfo/W=$sWinName $(StringFromList(0, controls))
 				y1 	= V_top
 				ControlInfo/W=$sWinName $(StringFromList(ItemsInList(controls)-1, controls))
 				y2 	= V_top
 				if(((info.wheelDy > 0) && (y1 <= 6)) || ((info.wheelDy < 0) && (y2 >= winHeight-24)))
-					ModifyControlList controls, win=$info.winName, pos+={0,info.wheelDy*8}	// up/down
+					isScroll = 1
+					ModifyControlList controls, win=$info.winName, pos+={0,info.wheelDy*56}
+					DoUpdate
+					isScroll = 0
 				endif	
+				return 1
 			endif
 			break
 	endswitch

@@ -1,22 +1,47 @@
-675,186,1166,661
+400,100,950,800
+title=Project|key=|type=subheader.
+title=experimenter's last name|key=userName|type=string.
+title=project name|key=projName|type=string.
+title=date (yyyy-mm-dd)|key=date|type=string.
+title=setup ID (1-3)|key=setupID|type=popup|options=unknown;1;2;3.
+
 title=Animal|key=|type=subheader.
-title=Species|key=species|type=popup|options=None;Mouse;Fish.
-title=ID|key=id|type=string.
-title=Genetic Line|key=geneticline|type=popup|options=None;Bl6;HR1_2:TN-XL;Pcp2:Cre;PV:Cre.
-title=Genetic Line Comments|key=geneticlinecomments|type=string.
-title=Reporter Line|key=reporter|type=popup|options=None;Ai9;Ai95;Ai38.
-title=Reporter Line Comments|key=reportercomments|type=string.
-title=Eye|key=eye|type=popup|options=None;Left;Right.
-title=Experiment|key=|type=subheader.
-title=Experimenter|key=experimenter|type=string.
-title=Preparation|key=preparation|type=popup|options=None;Whole-mount;Slice.
-title=Wavelength|key=wavelength|type=string.
-title=Injected|key=injected|type=checkbox.
-title=AAV Indicator|key=injectedindicator|type=popup|options=None;ArchLightD;ArchLightDCO;ClopHensor;iGluSnFR;GCaMP5;GCaMP6;RCamP1h.
-title=Injection Comments|key=injectedcomments|type=string.
-title=Pharmacology|key=pharmacology|type=popup|options=None;Carbenoxolone;CPPG;Gabazine;Gyki;LP-4;Kainate;NBQX;TPMPA;TTX.
-title=Pharmacology Comments|key=pharmacologycomments|type=string.
-title=Electroporated|key=electroporationperformed|type=checkbox.
-title=Electroporated Indicator|key=electroporatedindicator|type=popup|options=None;Oregon Green 488 BAPTA-1.
-title=Electroporation Comments|key=electroporationcomments|type=string.
-title=Morphology|key=morphology|type=checkbox.
+title=species|key=animSpecies|type=popup|options=none;mouse;zebrafish;moose;other.
+title=gender|key=animGender|type=popup|options=unknown;female;male.
+title=age [postnatal days]|key=animAge|type=int32|default=30|range=-30;2000.
+title=ID|key=animID|type=string.
+title=eye|key=eye|type=popup|options=unknown;left;right.
+title=comments on animal|key=animRem|type=string.
+
+title=Animal procedures|key=|type=subheader.
+title=dark adaptation [hours]|key=darkAdapt_hrs|type=float|default=1|digits=1.
+title=brain-injected|key=isBrainInject|type=checkbox.
+title=tracer|key=tracer|type=popup|options=none;retrobeads.
+title=injection quality (1-10)|key=brainInjectQ|type=popup|options=n/a;1;2;3;4;5;6;7;8;9;10.
+title=comments on brain injection|key=brainInjectRem|type=string.
+
+title=Genetics|key=|type=subheader.
+title=background line|key=genBkgLine|type=popup|options=none;Bl6;HR12_TNXL;Pcp2_Cre;PV_Cre.
+title=comments on background line|key=genBkgLineRem|type=string.
+title=Cre reporter line|key=genLine_Reporter|type=popup|options=none;Ai9;Ai95;Ai38;other.
+title=comments on Cre reporter line|key=genLine_ReporterRem|type=string.
+title=virus-injected|key=isVirusInject|type=checkbox.
+title=injection quality (1-10)|key=virusInjectQ|type=popup|options=n/a;1;2;3;4;5;6;7;8;9;10.
+title=comments on injection|key=virusInjectRem|type=string.
+title=virus vector|key=virusVect|type=list|options=none;AAV.
+title=virus serotype|key=virusSerotype|type=string.
+title=transfected protein|key=virusTransProtein|type=list|options=none;ArcLightD;ArcLightDCO;ClopHensor;iGluSnFR;GCaMP5;GCaMP6s;GCaMP6f;RCaMP1h;RGeco1.
+
+title=Preparation|key=|type=subheader.
+title=preparation type|key=prep|type=popup|options=none;wholemount;slice.
+title=slice thickness [µm]|key=sliceThickness_um|type=uint32|default=200.
+title=comments on preparation|key=prepRem|type=string.
+title=electroporated|key=isEpored|type=checkbox.
+title=indicator dye(s)|key=eporDye|type=list|options=none;OGB1;XRhod2;SR101.
+title=comments on electroporation|key=eporRem|type=string.
+title=bath temperature [°C]|key=bathTemp_degC|type=int32|default=36|range=1;40.
+
+title=Pharmacology|key=|type=subheader.
+title=pharmacological condition|key=pharmDrug|type=list|options=none;carbenoxolone;CPPG;gabazine;gyki;LAP4;kainate;NBQX;CBX;TPMPA;TTX;strychnine.
+title=drug concentration(s) [µm]|key=pharmDrugConc_um|type=string.
+title=comment on pharmacology|key=pharmRem|type=string.
