@@ -77,8 +77,10 @@ wave GeoC
 
 variable ff,xx,yy,rr,tt
 
+
 // find Triggers
-variable frameskip_after_trigger = seconds_skip_after_trigger/(nY*LineDuration) 
+variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
+
 variable nTriggers = 0
 for (ff=0;ff<nF-1;ff+=1)
 	for (yy=0;yy<nY;yy+=1)
@@ -89,7 +91,21 @@ for (ff=0;ff<nF-1;ff+=1)
 			else
 				OutputTriggerValues[nTriggers]=InputTriggers[0][yy+levelread_nY_after_trigger-nY][ff+1]
 			endif
-			ff+=frameskip_after_trigger
+			
+			variable skiplines = lineskip_after_trigger
+			do
+				if (skiplines>nY)
+					skiplines-=nY
+					ff+=1
+				else
+					break
+				endif
+			while(1)
+			yy+=round(skiplines)
+			if (yy>nY-1)
+				yy-=nY
+				ff+=1
+			endif			
 			nTriggers+=1
 		endif	
 	endfor
@@ -144,7 +160,11 @@ if (Display_traces==1)
 	Label bottom "\\Z10Time (s)"
 	
 	// triggers
-	for (tt=0;tt<nTriggers;tt+=1)
+	variable nTriggers_max = nTriggers // otherwise it takes ages to display things like noise triggers... now it only plots the first 100
+	if (nTriggers>100)
+		nTriggers_max = 100
+	endif
+	for (tt=0;tt<nTriggers_max;tt+=1)
 		ShowTools/A arrow
 		SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,0);DelayUpdate
 		DrawLine OutputTriggerTimes[tt],-TriggerHeight_Display,OutputTriggerTimes[tt],TriggerHeight_Display

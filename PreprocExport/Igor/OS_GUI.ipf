@@ -7,6 +7,7 @@
 #include "OS_TracesAndTriggers"
 #include "OS_BasicAveraging"
 #include "OS_hdf5Export"
+#include "OS_LaunchCellLab"
 
 function OS_GUI()
 	NewPanel /N=OfficialScripts /k=1 /W=(200,100,450,550)
@@ -70,7 +71,7 @@ Function OS_GUI_Buttonpress(ba) : ButtonControl
 					OS_AutoRoiByCorr()
 					break
 				case "step3c":
-					print "NOT IMPLEMENTED YET - DID NOTHING"
+					OS_LaunchCellLab()
 					break
 				case "step4":
 					OS_TracesAndTriggers()

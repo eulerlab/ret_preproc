@@ -14,6 +14,8 @@
 
 function OS_DetrendStack()
 
+printf "Detrending...."
+
 // flags from "OS_Parameters"
 if (waveexists($"OS_Parameters")==0)
 	print "Warning: OS_Parameters wave not yet generated - doing that now..."
@@ -41,32 +43,26 @@ if (Smoothingfactor>2^15-1) // exception handling - limit smooth function to its
 endif
 
 // detrending
-variable PercentDone = 0
-variable PercentPerPixel = 100/(nX*nY)
 variable xx,yy
-printf "Detrend progress: "
+make /o/n=(nX,nY) mean_image = 0
 for (xx=0; xx<nX; xx+=1)
 	for (yy=0; yy<nY; yy+=1)
 		make/o/n=(nF) CurrentTrace = InputData[xx][yy][p]
 		Wavestats/Q CurrentTrace
-		Smooth Smoothingfactor, CurrentTrace
-		OutputData[xx][yy][]-=CurrentTrace[r]-V_Avg
-		PercentDone+=PercentPerPixel
+		mean_image[xx][yy]=V_Avg
 	endfor
-	if (PercentDone>=10)
-		PercentDone-=10
-		printf "#"
-	endif
 endfor
+Smooth/DIM=2 Smoothingfactor, InputData
+Multithread OutputData[][][]-=InputData[p][q][r]-Mean_image[p][q]
 
 // generate output
 duplicate /o OutputData $output_name
 
 // cleanup
-killwaves CurrentTrace,InputData,OutputData
+killwaves CurrentTrace,InputData,OutputData,mean_image
 
 // outgoing dialogue
-print "# complete..."
+print " complete..."
 
 end
 
@@ -118,25 +114,19 @@ else
 	endif
 	
 	// detrending
-	variable PercentDone = 0
-	variable PercentPerPixel = 100/(nX*nY)
+	printf "Detrending...."
 	variable xx,yy
-	printf "Detrend progress: "
+	make /o/n=(nX,nY) mean_image = 0
 	for (xx=0; xx<nX; xx+=1)
 		for (yy=0; yy<nY; yy+=1)
 			make/o/n=(nF) CurrentTrace = InputData[xx][yy][p]
 			Wavestats/Q CurrentTrace
-			Smooth Smoothingfactor, CurrentTrace
-			OutputData[xx][yy][]-=CurrentTrace[r]-V_Avg
-			PercentDone+=PercentPerPixel
+			mean_image[xx][yy]=V_Avg
 		endfor
-		if (PercentDone>=10)
-			PercentDone-=10
-			printf "#"
-		endif
 	endfor
-	// outgoing dialogue
-	print "# complete..."
+	Smooth/DIM=2 Smoothingfactor, InputData
+	Multithread OutputData[][][]-=InputData[p][q][r]-Mean_image[p][q]
+	print " complete..."
 endif	
 	
 // generate output

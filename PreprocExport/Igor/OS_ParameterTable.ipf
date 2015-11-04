@@ -45,12 +45,8 @@ entry_position+=1
 
 /// ROI PLACEMENT /////////////////////////////////////////////////////////////////////////////////////
 
-SetDimLabel 0,entry_position,ROI_SD_min,OS_Parameters
-OS_Parameters[%ROI_SD_min] = 10 // Response minimum of a pixel to be used to seed a ROI - default 10
-entry_position+=1
-
 SetDimLabel 0,entry_position,ROI_corr_min,OS_Parameters
-OS_Parameters[%ROI_corr_min] = 0.3 // Activity correlation minimum to allow a seeded ROI to grow - default 0.3
+OS_Parameters[%ROI_corr_min] = 0.1 // Activity correlation minimum to allow a seeded ROI to grow - default 0.1
 entry_position+=1
 
 SetDimLabel 0,entry_position,ROI_mindiameter,OS_Parameters
@@ -58,15 +54,19 @@ OS_Parameters[%ROI_mindiameter] = 1 // min circle equivalent diameter in micron 
 entry_position+=1
 
 SetDimLabel 0,entry_position,ROI_maxdiameter,OS_Parameters
-OS_Parameters[%ROI_maxdiameter] = 6 // max circle equivalent diameter in micron - default 6
+OS_Parameters[%ROI_maxdiameter] = 3 // max circle equivalent diameter in micron - default 3
 entry_position+=1
 
 SetDimLabel 0,entry_position,ROI_minpix,OS_Parameters
-OS_Parameters[%ROI_minpix] = 3 // minimum number of pixels per ROI, overrides ROI_mindiameter - default 3
+OS_Parameters[%ROI_minpix] = 2 // minimum number of pixels per ROI, overrides ROI_mindiameter - default 2
 entry_position+=1
 
 SetDimLabel 0,entry_position,nRoiKillsAllowed,OS_Parameters
 OS_Parameters[%nRoiKillsAllowed] = 10 // nRois that get killed due to size minimum before the routine aborts trying to place more  - default 10
+entry_position+=1
+
+SetDimLabel 0,entry_position,ROI_PxBinning,OS_Parameters
+OS_Parameters[%ROI_PxBinning] = 1 // Bin pixels to autoplace ROIs (speedup = 2^Bin)  - default 1
 entry_position+=1
 
 /// TRACE AND TRIGGER EXTRACTION  ///////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ OS_Parameters[%Trigger_Threshold] = 20000 // Threshold to Trigger in Triggerchan
 entry_position+=1
 
 SetDimLabel 0,entry_position,Trigger_after_skip_s,OS_Parameters
-OS_Parameters[%Trigger_after_skip_s] = 0.2 // if triggers in triggerchannel, it skips X seconds - default 0.2
+OS_Parameters[%Trigger_after_skip_s] = 0.1 // if triggers in triggerchannel, it skips X seconds - default 0.1
 entry_position+=1
 
 SetDimLabel 0,entry_position,Trigger_LevelRead_after_lines,OS_Parameters
@@ -105,11 +105,20 @@ SetDimLabel 0,entry_position,Trigger_Mode,OS_Parameters
 OS_Parameters[%Trigger_Mode] = 1 // Use every nth trigger - default 1
 entry_position+=1
 
+SetDimLabel 0,entry_position,AverageStack_make,OS_Parameters
+OS_Parameters[%AverageStack_make] = 0 // yes or no /0/1 - default 0
+entry_position+=1
 
+SetDimLabel 0,entry_position,AverageStack_rate,OS_Parameters
+OS_Parameters[%AverageStack_rate] = 50 // Time resolution of the Average stack, in Hz - the faster the longer it calculates
+entry_position+=1
 
+SetDimLabel 0,entry_position,AverageStack_dF,OS_Parameters
+OS_Parameters[%AverageStack_dF] = 1 // Subtract Average
+entry_position+=1
 
 
 // Display the Table
-edit /k=1 OS_Parameters.l, OS_Parameters
+edit /k=1 /W=(50,50,300,500)OS_Parameters.l, OS_Parameters
 
 end
