@@ -9,7 +9,7 @@ Function OS_hdf5Export()
 		WAVE OS_Parameters,ROIs,Traces0_raw,Traces0_znorm,Tracetimes0,Triggertimes,Triggervalues
 		NewPath targetPath
 		string pathName = "targetPath"
-		HDF5CreateFile/P=$pathName /O /Z fileID as "preprocessedData.h5"
+		HDF5CreateFile/P=$pathName /O /Z fileID as GetDataFolder(0)
 		HDF5SaveData /O /Z /IGOR=8 OS_parameters, fileID
 		HDF5SaveData /O /Z ROIs, fileID
 		HDF5SaveData /O /Z Traces0_raw, fileID
