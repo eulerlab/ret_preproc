@@ -52,7 +52,11 @@ endfor
 // call cell lab
 string sourcename = "Stack_ave"
 string targetname = "Stack_ave_SARFIA_ROI"
-RecognizeCellsUI($sourcename, targetname, "")
+//RecognizeCellsUI($sourcename, targetname, "")
+
+// need to implement
+
+// also need to make sure ROI in the end is setscaled to be centered at 0
 
 
 

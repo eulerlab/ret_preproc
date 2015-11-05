@@ -117,6 +117,24 @@ SetDimLabel 0,entry_position,AverageStack_dF,OS_Parameters
 OS_Parameters[%AverageStack_dF] = 1 // Subtract Average
 entry_position+=1
 
+/// RF Calculations  /////////////////////////////////////////////////////////////////////////
+
+SetDimLabel 0,entry_position,Noise_PxSize_microns,OS_Parameters
+OS_Parameters[%Noise_PxSize_microns] = 20 // pixel size of 3D noise - default 20 microns
+entry_position+=1
+
+SetDimLabel 0,entry_position,Noise_EventSD,OS_Parameters
+OS_Parameters[%Noise_EventSD] = 0.7 // Sensitivity of Event triggering
+entry_position+=1
+
+SetDimLabel 0,entry_position,Noise_FilterLength_s,OS_Parameters
+OS_Parameters[%Noise_FilterLength_s] = 1 // Length extracted in seconds
+entry_position+=1
+
+SetDimLabel 0,entry_position,Noise_Compression,OS_Parameters
+OS_Parameters[%Noise_Compression] = 10 // Noise RF calculation speed up
+entry_position+=1
+
 
 // Display the Table
 edit /k=1 /W=(50,50,300,500)OS_Parameters.l, OS_Parameters

@@ -8,6 +8,7 @@
 #include "OS_BasicAveraging"
 #include "OS_hdf5Export"
 #include "OS_LaunchCellLab"
+#include "OS_STRFs"
 
 //----------------------------------------------------------------------------------------------------------------------
 Menu "ScanM", dynamic
@@ -43,7 +44,8 @@ function OS_GUI()
 	Button step3b,pos={78,203},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. by Correlation"
 	Button step3c,pos={78,228},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. CellLab (not impl.)"
 	Button step4,pos={78,278},size={147,26},proc=OS_GUI_Buttonpress,title="Traces and Triggers"
-	Button step5,pos={78,341},size={147,26},proc=OS_GUI_Buttonpress,title="Basic Averaging"
+	Button step5a,pos={78,341},size={71,26},proc=OS_GUI_Buttonpress,title="Averaging"
+	Button step5b,pos={154,341},size={71,26},proc=OS_GUI_Buttonpress,title="ST RFs"	
 	Button step6,pos={78,402},size={147,26},proc=OS_GUI_Buttonpress,title="Export for database"
 	
 	HideTools/A
@@ -85,8 +87,11 @@ Function OS_GUI_Buttonpress(ba) : ButtonControl
 				case "step4":
 					OS_TracesAndTriggers()
 					break					
-				case "step5":
+				case "step5a":
 					OS_BasicAveraging()
+					break
+				case "step5b":
+					OS_STRFs()
 					break
 				case "step6":
 					OS_hdf5Export()

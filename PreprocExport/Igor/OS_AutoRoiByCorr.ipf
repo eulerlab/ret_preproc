@@ -238,10 +238,10 @@ endif
 
 
 // setscale
-setscale /p x,0,px_Size,"µm" Stack_Ave, ROIs
-setscale /p y,0,px_Size,"µm" Stack_Ave, ROIs
-setscale /p x,0,px_Size*nPxBinning,"µm" Correlation_projection
-setscale /p y,0,px_Size*nPxBinning,"µm" Correlation_projection
+setscale /p x,-nX/2*px_Size,px_Size,"µm" Stack_Ave, ROIs
+setscale /p y,-nY/2*px_Size,px_Size,"µm" Stack_Ave, ROIs
+setscale /p x,-nX/2*px_Size*nPxBinning,px_Size*nPxBinning,"µm" Correlation_projection
+setscale /p y,-nY/2*px_Size*nPxBinning,px_Size*nPxBinning,"µm" Correlation_projection
 
 // display
 if (Display_RoiMask==1)

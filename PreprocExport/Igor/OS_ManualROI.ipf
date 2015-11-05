@@ -48,8 +48,8 @@ for (xx=X_cut;xx<nX;xx+=1)
 		Stack_SD[xx][yy]=V_SDev
 	endfor
 endfor
-setscale /p x,0,px_Size,"µm" Stack_SD, ROIs
-setscale /p y,0,px_Size,"µm" Stack_SD, ROIs
+setscale /p x,-nX/2*px_Size,px_Size,"µm" ROIs, Stack_SD
+setscale /p y,-nY/2*px_Size,px_Size,"µm"  ROIs, Stack_SD
 
 // display SD wave
 Display /k=1 
@@ -82,8 +82,8 @@ variable xx,yy,rr
 wave wParamsNum // Reads data-header
 variable zoom = wParamsNum(30) // extract zoom
 variable px_Size = (0.65/zoom * 110)/nX // microns
-setscale /p x,0,px_Size,"µm" ROIs
-setscale /p y,0,px_Size,"µm" ROIs
+setscale /p x,-nX/2*px_Size,px_Size,"µm" ROIs
+setscale /p y,-nY/2*px_Size,px_Size,"µm"  ROIs
 
 // create proper ROI Mask from M_ROIMask
 duplicate /o M_ROIMask ROIbw_sub // make a lookup wave
@@ -180,8 +180,8 @@ else
 			Stack_SD[xx][yy]=V_SDev
 		endfor
 	endfor
-	setscale /p x,0,px_Size,"µm" Stack_SD, ROIs
-	setscale /p y,0,px_Size,"µm" Stack_SD, ROIs
+	setscale /p x,-nX/2*px_Size,px_Size,"µm" Stack_SD,ROIs
+	setscale /p y,-nY/2*px_Size,px_Size,"µm" Stack_SD, ROIs
 	
 	// display SD wave
 	Display /k=1
