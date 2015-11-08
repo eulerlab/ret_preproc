@@ -17,22 +17,29 @@
 // ----------------------------------------------------------------------------------
 Menu "ScanM", dynamic
 	"-"
-	" New experiment header file",	/Q, 	FG_Menue_createExpHeaderFile()
-	" Load experiment header file", 	/Q, 	FG_Menue_loadExpHeaderFile()
+	" Load experiment header file or template", 	/Q, 	FG_Menue_loadExpHeaderFile()
 	"-"	
 End
 
 // -------------------------------------------------------------------------------------
-function FG_Menue_createExpHeaderFile()
-
-	FG_createForm()
-end
-
+//function FG_Menue_createExpHeaderFile()
+//
+//	FG_createForm("")
+//	FG_updateForm()
+//end
 
 // -------------------------------------------------------------------------------------
 function FG_Menue_loadExpHeaderFile()
 
-	FG_createForm()
+	string	sWinName	= StrVarOrDefault("root:formGenWinName", "")
+	if(strlen(sWinName) == 0)
+		FG_createForm("")
+	else
+		DoWindow/F 	$(sWinName)
+		if(V_flag == 0)
+			FG_createForm("")
+		endif	
+	endif	
 	FG_updateKeyValueLists("", "")
 end
 
