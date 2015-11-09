@@ -54,7 +54,7 @@
 // -------------------------------------------------------------------------------------
 strconstant		sNameTemplateFile	= "experimentHeaderFile_template.txt"
 strconstant		sFExt_HeaderFile	= ".ini" 
-strconstant		sFPre_HeaderFile	= "EHF_"	
+strconstant		sFPre_HeaderFile	= ""	
 strconstant		sFileFilter_Ini	= "Experiment Header File (*.ini):.ini;"
 strconstant 	sFileIniOpenDialog	= "Select an Experiment Header File ..."
 strconstant 	sRelPathToTemplate	= "User Procedures:ScanM:"
@@ -430,7 +430,7 @@ End
 function FG_onFormButtonProc(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 
-	string		sFileName, sFilePath
+	string		sFileName, sFilePath, sTemp
 	variable	iEntr
 	SVAR		sPath		= $("root:formGenFolder")
 	SVAR		sTables		= $("root:formGenTables")	
@@ -441,7 +441,8 @@ function FG_onFormButtonProc(ba) : ButtonControl
 			strswitch(ba.ctrlName)
 				case "buttonSave":
 				case "buttonSaveExit":				
-					sprintf sFileName, "%s%s", sFPre_HeaderFile, Secs2Date(datetime,-2)
+					sTemp	= ReplaceString("-", Secs2Date(datetime,-2), "")
+					sprintf sFileName, "%s%s", sFPre_HeaderFile, sTemp
 					GetFileFolderInfo/Q/D/Z=2
 					if(V_flag == 0)
 						sFilePath	= RemoveEnding(S_path, ":")
