@@ -52,15 +52,15 @@ print "Recorded ", total_time, "s @", framerate, "Hz"
 variable xx,yy,xxx,yyy,nn,rr,ww // initialise counters
 if (nPxBinning==1)
 else
-	make /o/n=(nX/nPxBinning,nY/nPxBinning,nF) InputDataBinDiv
+	make /o/n=(ceil(nX/nPxBinning),ceil(nY/nPxBinning),nF) InputDataBinDiv
 	for (xx=X_cut;xx<nX;xx+=1)
 		for (yy=0;yy<nY;yy+=1)
 			InputDataBinDiv[floor(xx/nPxBinning)][floor(yy/nPxBinning)][]+=InputData[xx][yy][r]/(nPxBinning^2)
 		endfor
 	endfor
 	duplicate /o InputDataBinDiv InputData
-	nX/=nPxBinning
-	nY/=nPxBinning	
+	nX=ceil(nX/nPxBinning)
+	nY=ceil(nY/nPxBinning)
 endif
 variable nRois_max = (nX-X_cut/nPxBinning)*nY
 
@@ -92,7 +92,7 @@ variable nCorr,Cumul_corr,corr_scale
 variable PercentDone = 0
 variable PercentPerPixel = 100/((nX)*(nY))
 printf "Correlation progress: "
-for (xx=X_cut/nPxBinning;xx<nX;xx+=1)
+for (xx=ceil(X_cut/nPxBinning);xx<nX;xx+=1)
 	for (yy=0;yy<nY;yy+=1)
 		Multithread currentwave_main[]=InputData[xx][yy][p] // get trace from "reference pixel"
 		Wavestats/Q currentwave_main
@@ -210,16 +210,12 @@ print " total of", nRois
 // upsample again if was Binned
 if (nPxBinning==1)
 else
-	variable Odd_XCut_Offset = 0
-	if (X_Cut==3 )
-		Odd_XCut_Offset = 1
-	endif
 	nX*=nPxBinning
 	nY*=nPxBinning	
 	make /o/n=(nX,nY) ROIs_new = 0
-	for (xx=X_cut/nPxBinning;xx<nX/nPxBinning;xx+=1)
-		for (yy=0;yy<nY/nPxBinning;yy+=1)
-			ROIs_new[xx*nPxBinning+Odd_XCut_Offset,xx*nPxBinning+(nPxBinning-1)+Odd_XCut_Offset][yy*nPxBinning,yy*nPxBinning+(nPxBinning-1)]=ROIs[xx][yy]
+	for (xx=ceil(X_cut/nPxBinning);xx<floor(nX/nPxBinning);xx+=1)
+		for (yy=0;yy<floor(nY/nPxBinning);yy+=1)
+			ROIs_new[xx*nPxBinning,xx*nPxBinning+(nPxBinning-1)][yy*nPxBinning,yy*nPxBinning+(nPxBinning-1)]=ROIs[xx][yy]
 		endfor
 	endfor
 	duplicate /o ROIs_new ROIs
@@ -240,8 +236,8 @@ endif
 // setscale
 setscale /p x,-nX/2*px_Size,px_Size,"µm" Stack_Ave, ROIs
 setscale /p y,-nY/2*px_Size,px_Size,"µm" Stack_Ave, ROIs
-setscale /p x,-nX/2*px_Size*nPxBinning,px_Size*nPxBinning,"µm" Correlation_projection
-setscale /p y,-nY/2*px_Size*nPxBinning,px_Size*nPxBinning,"µm" Correlation_projection
+setscale /p x,-nX/2*px_Size,px_Size*nPxBinning,"µm" Correlation_projection
+setscale /p y,-nY/2*px_Size,px_Size*nPxBinning,"µm" Correlation_projection
 
 // display
 if (Display_RoiMask==1)

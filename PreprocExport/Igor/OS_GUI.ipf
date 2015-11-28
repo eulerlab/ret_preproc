@@ -9,6 +9,7 @@
 #include "OS_hdf5Export"
 #include "OS_LaunchCellLab"
 #include "OS_STRFs"
+#include "OS_EventFinder"
 
 //----------------------------------------------------------------------------------------------------------------------
 Menu "ScanM", dynamic
@@ -44,8 +45,9 @@ function OS_GUI()
 	Button step3b,pos={78,203},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. by Correlation"
 	Button step3c,pos={78,228},size={147,20},proc=OS_GUI_Buttonpress,title="Autom. CellLab (not impl.)"
 	Button step4,pos={78,278},size={147,26},proc=OS_GUI_Buttonpress,title="Traces and Triggers"
-	Button step5a,pos={78,341},size={71,26},proc=OS_GUI_Buttonpress,title="Averaging"
-	Button step5b,pos={154,341},size={71,26},proc=OS_GUI_Buttonpress,title="ST RFs"	
+	Button step5a,pos={78,341},size={43,26},proc=OS_GUI_Buttonpress,title="Ave"
+	Button step5b,pos={130,341},size={43,26},proc=OS_GUI_Buttonpress,title="Events"			
+	Button step5c,pos={181,341},size={43,26},proc=OS_GUI_Buttonpress,title="RFs"	
 	Button step6,pos={78,402},size={147,26},proc=OS_GUI_Buttonpress,title="Export for database"
 	
 	HideTools/A
@@ -91,6 +93,9 @@ Function OS_GUI_Buttonpress(ba) : ButtonControl
 					OS_BasicAveraging()
 					break
 				case "step5b":
+					OS_EventFinder()
+					break					
+				case "step5c":
 					OS_STRFs()
 					break
 				case "step6":

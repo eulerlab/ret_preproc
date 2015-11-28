@@ -34,6 +34,7 @@ variable use_znorm = OS_Parameters[%Use_Znorm]
 variable LineDuration = OS_Parameters[%LineDuration]
 variable Triggermode = OS_Parameters[%Trigger_Mode]
 variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
+variable IgnoreLastXseconds = OS_Parameters[%IgnoreLastXseconds]
 variable AverageStack_make = OS_Parameters[%AverageStack_make]
 variable AverageStack_rate = OS_Parameters[%AverageStack_rate]
 variable AverageStack_dF = OS_Parameters[%AverageStack_dF]
@@ -66,12 +67,17 @@ variable tt,rr,ll,pp,xx,yy
 // Get Snippet Duration, nLoops etc..
 variable nTriggers
 variable Ignore1stXTriggers = 0
+variable IgnoreLastXTriggers = 0
+variable last_data_time_allowed = InputTraceTimes[nF-1][0]-IgnoreLastXseconds
+
 for (tt=0;tt<Dimsize(triggertimes,0);tt+=1)
 	if (NumType(Triggertimes[tt])==0)
 		if (Ignore1stXseconds>Triggertimes[tt])
 			Ignore1stXTriggers+=1
 		endif
-		nTriggers+=1
+		if (Triggertimes[tt]<=last_data_time_allowed)
+			nTriggers+=1
+		endif
 	else
 		break
 	endif
@@ -80,8 +86,15 @@ if (Ignore1stXTriggers>0)
 	print "ignoring first", Ignore1stXTriggers, "Triggers"
 endif
 variable SnippetDuration = Triggertimes[TriggerMode+Ignore1stXTriggers]-Triggertimes[0+Ignore1stXTriggers] // in seconds
-variable nLoops = floor((nTriggers-Ignore1stXTriggers) / TriggerMode)
-print nTriggers, "Triggers, ignoring 1st",  Ignore1stXTriggers, "and skipping in", TriggerMode, "gives", nLoops, "complete loops"
+
+variable Last_Snippet_Length = (Triggertimes[nTriggers-1]-triggertimes[nTriggers-TriggerMode])/SnippetDuration
+if (Last_Snippet_Length<SnippetDuration)
+	IgnoreLastXTriggers = TriggerMode
+endif
+variable nLoops = floor((nTriggers-Ignore1stXTriggers-IgnoreLastXTriggers) / TriggerMode)
+
+print nTriggers, "Triggers, ignoring 1st",  Ignore1stXTriggers, "and last", IgnoreLastXTriggers, "and skipping in", TriggerMode, "gives", nLoops, "complete loops"
+print "Note: Last", IgnoreLastXseconds, "s are also clipped"
 
 // make line precision timestamped trace arrays
 variable FrameDuration = nY*LineDuration // in seconds
@@ -111,6 +124,7 @@ endfor
 // Make Average Stack (optional)
 
 if (AverageStack_make==1)
+	print "Generating AverageStack"
 	make /o/n=(nX-X_Cut,nY) OutputStack_avg = 0
 	variable stack_downsample = AverageStack_rate / (1/LineDuration)
 	make /o/n=(nX-X_cut,nY,nPoints*stack_downsample) OutputStackUpsampled = 0 // in line precision - deafult 500 Hz
@@ -121,8 +135,7 @@ if (AverageStack_make==1)
 			OutputStack_avg[xx][yy]=V_avg
 			setscale x,InputTraceTimes[0][0],InputTraceTimes[nF-1][0],"s" CurrentTrace // uses trace timestamps from ROI 0
 			Resample/RATE=(AverageStack_rate) CurrentTrace
-			lineshift = yy
-			Multithread OutputStackUpsampled[xx][yy][lineshift,nPoints*stack_downsample-4*nY] = CurrentTrace[r-lineshift] // ignores last 4 frames of original recording to avoid Array overrun
+			Multithread OutputStackUpsampled[xx][yy][0,nPoints*stack_downsample-4*nY] = CurrentTrace[r] // ignores last 4 frames of original recording to avoid Array overrun
 		endfor
 	endfor
 	make /o/n=(nX-X_Cut,nY,(SnippetDuration * 1/LineDuration) * stack_downsample) OutputStack = 0

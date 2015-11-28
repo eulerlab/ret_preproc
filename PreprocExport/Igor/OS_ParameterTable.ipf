@@ -95,6 +95,10 @@ SetDimLabel 0,entry_position,Ignore1stXseconds,OS_Parameters
 OS_Parameters[%Ignore1stXseconds] = 1 // for baseline extraction & for averaging across triggers (below): ignores X 1st seconds of triggers
 entry_position+=1
 
+SetDimLabel 0,entry_position,IgnoreLastXseconds,OS_Parameters
+OS_Parameters[%IgnoreLastXseconds] = 0 // if weird stuff happens at end of trace can cut away
+entry_position+=1
+
 /// BASIC AVERAGING  /////////////////////////////////////////////////////////////////////////
 
 SetDimLabel 0,entry_position,Use_Znorm,OS_Parameters
@@ -116,6 +120,20 @@ entry_position+=1
 SetDimLabel 0,entry_position,AverageStack_dF,OS_Parameters
 OS_Parameters[%AverageStack_dF] = 1 // Subtract Average
 entry_position+=1
+/// EVENT TRIGGERING  ////////////////////////////////////////////////////////////////////////
+
+SetDimLabel 0,entry_position,Events_nMax,OS_Parameters
+OS_Parameters[%Events_nMax] = 1000 // maximal number of events identified in single full trace - default 1000
+entry_position+=1
+
+SetDimLabel 0,entry_position,Events_Threshold,OS_Parameters
+OS_Parameters[%Events_Threshold] = 1 // Threshold for Peak detection (log scale), default = 1
+entry_position+=1
+
+SetDimLabel 0,entry_position,Events_RateBins_s,OS_Parameters
+OS_Parameters[%Events_RateBins_s] = 0.05 // "Smooth_size" for Event rate plots (s) - default 0.05
+entry_position+=1
+
 
 /// RF Calculations  /////////////////////////////////////////////////////////////////////////
 

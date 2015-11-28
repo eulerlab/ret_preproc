@@ -47,6 +47,7 @@ variable nSeconds_prerun_reference = OS_Parameters[%Baseline_nSeconds]
 variable TriggerHeight_Display = OS_Parameters[%Trigger_DisplayHeight] 
 variable LineDuration = OS_Parameters[%LineDuration]
 variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
+variable IgnoreLastXseconds = OS_Parameters[%IgnoreLastXseconds]
 
 // data handling
 string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
@@ -128,7 +129,7 @@ for (rr=0;rr<nRois;rr+=1)
 	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
 	Wavestats/Q BaselineTrace
 	OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
-	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][0]*LineDuration // correct each ROIs timestamp by it's Y position in the scan
+	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration // correct each ROIs timestamp by it's Y position in the scan
 endfor
 
 // export handling
@@ -175,6 +176,12 @@ if (Display_traces==1)
 	•ShowTools/A arrow
 	•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
 	•DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
+	if (IgnoreLastXSeconds>0)
+		•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,65280),dash= 2,fillpat= 0;DelayUpdate
+		•DrawRect OutputTraceTimes[nF-1][0]-IgnoreLastXseconds,-TriggerHeight_Display,OutputTraceTimes[nF-1][0],TriggerHeight_Display
+	endif
+
+
 	HideTools/A
 endif
 
