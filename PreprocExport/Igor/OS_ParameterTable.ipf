@@ -5,6 +5,9 @@ function OS_ParameterTable()
 // make a new table
 make /o/n=(100) OS_Parameters = NaN
 
+// reads data-header
+wave wParamsNum
+
 // Define Entries
 variable entry_position = 0
 /// GENERAL ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +33,9 @@ OS_Parameters[%LightArtifact_cut] = 3 // nPixels cut in X to remove LightArtifac
 entry_position+=1
 
 SetDimLabel 0,entry_position,LineDuration,OS_Parameters
-OS_Parameters[%LineDuration] = 0.002 // number of seconds per scan line - default 0.002
+OS_Parameters[%LineDuration] = wParamsNum(7) * wParamsNum(17) * 10^-6  // == 0.002, usually; number of seconds per scan line
+// Note - initially had this manual entry = 0.002, but some scan protocols have this time not equal to 2 ms, so instead now I calculate it from effective pixel duration (header position 7) multiplied by
+// actual frame width (i.-e. beyond the cropped x-scale shown during the scan, header position 17. the unit in "7" is microseconds, so to scale to seconds is * 10^-6 
 entry_position+=1
 
 /// DETREND ////////////////////////////////////////////////////////////////////////////////////////////////
