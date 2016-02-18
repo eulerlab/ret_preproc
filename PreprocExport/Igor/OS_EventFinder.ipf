@@ -142,9 +142,21 @@ make /o/n=(nPoints,nRois) OutputTracesUpsampled2 = 0 // in line precision - deaf
 make /o/n=(nPoints,nRois) OutputTracesUpsampled3 = 0 // in line precision - deafult 500 Hz - event rates
 
 for (rr=0;rr<nRois;rr+=1)
-	make /o/n=(nF) CurrentTrace = InputTraces[p][rr]
+// for linear interpolation
+	make /o/n=(nF*nY) CurrentTrace = NaN
 	setscale x,InputTraceTimes[0][rr],InputTraceTimes[nF-1][rr],"s" CurrentTrace
-	Resample/RATE=(1/LineDuration) CurrentTrace
+	for (ff=0;ff<nF-1;ff+=1)
+		for (yy=0;yy<nY; yy+=1)
+			CurrentTrace[ff*nY+yy]=(InputTraces[ff+1][rr]*yy+InputTRaces[ff][rr]*(nY-yy))/nY
+		endfor
+	endfor
+
+// for hanned interpolation
+//	make /o/n=(nF) CurrentTrace = InputTraces[p][rr]
+//	setscale x,InputTraceTimes[0][rr],InputTraceTimes[nF-1][rr],"s" CurrentTrace
+//	Resample/RATE=(1/LineDuration) CurrentTrace
+
+
 	variable lineshift = round(InputTraceTimes[0][rr] / LineDuration)
 	OutputTracesUpsampled[lineshift,nPoints-4*FrameDuration/LineDuration][rr] = CurrentTrace[p-lineshift] // ignores last 4 frames of original recording to avoid Array overrun
 
