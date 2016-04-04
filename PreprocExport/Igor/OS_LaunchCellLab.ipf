@@ -36,7 +36,6 @@ variable nF = DimSize(InputData,2)
 //variable Framerate = 1/(nY * LineDuration) // Hz 
 //variable Total_time = (nF * nX ) * LineDuration
 //print "Recorded ", total_time, "s @", framerate, "Hz"
-
 variable xx,yy
 
 // make average image
@@ -49,14 +48,13 @@ for (xx=0;xx<nX;xx+=1)
 	endfor
 endfor
 
+
+
 // call cell lab
 string sourcename = "Stack_ave"
-string targetname = "Stack_ave_SARFIA_ROI"
-//RecognizeCellsUI($sourcename, targetname, "")
+string targetname = "ROIs"
+RecognizeCellsUI($sourcename, targetname, "")
 
-// need to implement
-
-// also need to make sure ROI in the end is setscaled to be centered at 0
 
 
 

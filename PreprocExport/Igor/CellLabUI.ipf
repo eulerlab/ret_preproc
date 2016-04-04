@@ -434,6 +434,15 @@ function MakeSARFIAMask(sWaveNameFull)
 	wReport[][2] = wCellSize[wCellOrder[p]]
 	wReport[][3] = (wCellXMax[wCellOrder[p]] + wCellXMin[wCellOrder[p]])/2
 	wReport[][4] = (wCellYMax[wCellOrder[p]] + wCellYMin[wCellOrder[p]])/2
+	// calculate Pixel size in microns to scale ROIs
+	wave wParamsNum // Reads data-header
+	variable zoom = wParamsNum(30) // extract zoom
+	variable nX = Dimsize(wSARFIAMask,0)
+	variable nY = Dimsize(wSARFIAMask,1)	
+	variable px_Size = (0.65/zoom * 110)/nX // microns
+	setscale /p x,-nX/2*px_Size,px_Size,"µm" wSARFIAMask
+	setscale /p y,-nY/2*px_Size,px_Size,"µm"  wSARFIAMask
+	
 end
 
 function OnRecognizeCells(sWaveNameFull)

@@ -68,7 +68,7 @@ variable nRois = DimSize(InputTraces,1)
 variable nY = DimSize(InputStack,1)
 variable LineRate = 1/LineDuration
 variable FilterLength_Line = Filterlength/LineDuration
-variable FilterLength_Real = FilterLength_Line/Compression
+variable FilterLength_Real = floor(FilterLength_Line/Compression)
 
 variable xx,yy,ff,rr,tt
 
@@ -157,7 +157,7 @@ for (rr=0;rr<nRois;rr+=1) // goes through all ROIs
 	CurrentImage[][]=Filter_SDs[p][q][rr]
 	Imagestats/Q CurrentImage
 	make /o/n=(FilterLength_Real) CurrentSVDTimeKernel = SVDKernels_Time[p][rr]
-	make /o/n=(FilterLength_Real) CurrentSDTimeKernel = CurrentFilter[V_MaxColLoc][V_MaxRowLoc][p]	
+	make /o/n=(FilterLength_Real) CurrentSDTimeKernel = CurrentFilter[V_MaxRowLoc][V_MaxColLoc][p]	
 	Statslinearcorrelationtest/Q CurrentSVDTimeKernel, CurrentSDTimeKernel
 	if (W_Statslinearcorrelationtest[1]<0) // ie. if opposite polarity
 		SVDKernels_Time[][rr]*=-1
