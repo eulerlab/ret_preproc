@@ -113,11 +113,6 @@ for (ff=0;ff<nF-1;ff+=1)
 endfor
 print nTriggers, " Triggers found"
 
-//redimension OutputTriggerValues so it doesn't have trailing NaN's
-redimension /N=(nTriggers) OutputTriggerValues
-redimension /N=(nTriggers) OutputTriggerTimes
-
-
 // extract traces according to ROIs
 for (rr=0;rr<nRois;rr+=1)
 	variable ROI_value = (rr+1)*-1 // ROIs in Mask are coded as negative starting from -1 (SARFIA standard)
