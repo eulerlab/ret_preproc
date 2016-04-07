@@ -3,59 +3,14 @@
 function OS_ParameterTable()
 
 // make a new table
-make /o/n=100 OS_Parameters = NaN
+make /o/n=(100) OS_Parameters = NaN
 
 // reads data-header
 wave wParamsNum
 
 // Define Entries
 variable entry_position = 0
-
-////////////get from the wParamsNum wave, values that will be used often in other analysis scripts
-////////////line scan duration, sampling rate, 
-Variable xPixelsInd,yPixelsInd,realPixDurInd,lineDur,sampRate,sampPeriod,zoomIndx
-		
-//x and y pixel indexes on the wave
-xPixelsInd = FindDimLabel(wParamsNum,0,"User_dxPix" )
-yPixelsInd = FindDimLabel(wParamsNum,0,"User_dyPix" )
-		
-//Zoom Indx on the wave
-//zoomIndx =  FindDimLabel(wParamsNum,0,"Zoom" )
-	
-//duration of each pixel scanning on the "fast" axis
-realPixDurInd = FindDimLabel(wParamsNum,0,"RealPixDur" )
-//duration of each scan line on the "fast" axis
-lineDur = (wParamsNum[xPixelsInd] *  wParamsNum[realPixDurInd]) * 10^-6
-//scaling factor in µm
-//scalingFactor = 
-			
-//Sampling period and rate
-sampPeriod = (lineDur* wParamsNum[yPixelsInd])
-sampRate = 1/sampPeriod
-
-
 /// GENERAL ////////////////////////////////////////////////////////////////////////////////////////////////
-
-//store the values back in the wParamsNum wave
-//redimension /N=(numpnts(OS_Parameters)+1) OS_Parameters
-
-//SetDimLabel 0,entry_position,Data_Channel,OS_Parameters
-setdimlabel 0,entry_position,LineDuration,OS_Parameters
-OS_Parameters[%LineDuration] = lineDur
-//OS_Parameters[numpnts(OS_Parameters)-1] = lineDur
-entry_position+=1
-
-//redimension /N=(numpnts(OS_Parameters)+1) OS_Parameters
-setdimlabel 0,entry_position,samp_rate_Hz,OS_Parameters
-//OS_Parameters[numpnts(OS_Parameters)-1] = OS_Parameters
-OS_Parameters[%samp_rate_Hz] = sampRate
-entry_position+=1
-		
-//redimension /N=(numpnts(OS_Parameters)+1) OS_Parameters
-setdimlabel 0,entry_position,'samp_period',OS_Parameters
-//OS_Parameters[numpnts(OS_Parameters)-1] = sampPeriod
-OS_Parameters[%samp_period] = sampPeriod
-entry_position+=1
 
 SetDimLabel 0,entry_position,Data_Channel,OS_Parameters
 OS_Parameters[%Data_Channel] = 0 // Fluorescence Data in wDataChX - default 0
@@ -77,14 +32,11 @@ SetDimLabel 0,entry_position,LightArtifact_cut,OS_Parameters
 OS_Parameters[%LightArtifact_cut] = 3 // nPixels cut in X to remove LightArtifact - default 3
 entry_position+=1
 
-//
-// this chunk of code was substituted by a less hard coded one, which is a couple of lines above
-//SetDimLabel 0,entry_position,LineDuration,OS_Parameters
-//OS_Parameters[%LineDuration] = wParamsNum(7) * wParamsNum(17) * 10^-6  // == 0.002, usually; number of seconds per scan line
+SetDimLabel 0,entry_position,LineDuration,OS_Parameters
+OS_Parameters[%LineDuration] = wParamsNum(7) * wParamsNum(17) * 10^-6  // == 0.002, usually; number of seconds per scan line
 // Note - initially had this manual entry = 0.002, but some scan protocols have this time not equal to 2 ms, so instead now I calculate it from effective pixel duration (header position 7) multiplied by
 // actual frame width (i.-e. beyond the cropped x-scale shown during the scan, header position 17. the unit in "7" is microseconds, so to scale to seconds is * 10^-6 
-//
-//entry_position+=1
+entry_position+=1
 
 /// DETREND ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -206,11 +158,7 @@ SetDimLabel 0,entry_position,Noise_Compression,OS_Parameters
 OS_Parameters[%Noise_Compression] = 10 // Noise RF calculation speed up
 entry_position+=1
 
-//code to redimension the OS_parameter table, so it doesn't have trailing NaN's
-redimension /N=(entry_position) OS_Parameters
 
-
-		
 // Display the Table
 edit /k=1 /W=(50,50,300,500)OS_Parameters.l, OS_Parameters
 
