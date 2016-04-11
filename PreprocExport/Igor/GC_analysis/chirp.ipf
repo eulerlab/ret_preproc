@@ -1,6 +1,6 @@
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 
-function Test()
+function Chirp()
 
 wave OS_Parameters
 
@@ -26,7 +26,7 @@ string traces_name = "traces0_znorm" //traces_detrended
 string Roi_name = "ROIs" //roi
 string triggerchannel_name = "Triggertimes"
 string traces_times = "Tracetimes0"
-string sizes_name = "Stack_ave_report" //"wDataCh0_ave_report"
+//string sizes_name = "Stack_ave_report" //"wDataCh0_ave_report"
 string image_name = "stack_ave"//"wDataCh0_ave"
 string raw_parameters = "wParamsNum"
 
@@ -34,7 +34,7 @@ duplicate /o $traces_name traces
 duplicate /o $Roi_name Roi
 duplicate /o $triggerchannel_name triggerInFrames
 duplicate /o $traces_times tracestimes
-duplicate /o $sizes_name sizes
+//duplicate /o $sizes_name sizes
 duplicate /o $image_name image
 duplicate /o $raw_parameters parameters
 

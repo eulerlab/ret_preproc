@@ -31,10 +31,10 @@ Function OS_hdf5Export()
 		//saving necessary things for RGC chirp analysis
 		//wDataCh0 is necessary for the movie
 		if (waveexists($"stack_ave"))			
-			HDF5SaveData /O /Z wDataCh0, fileID
+			//HDF5SaveData /O /Z wDataCh0, fileID
 			HDF5SaveData /O /Z GeoC, fileID
 			HDF5SaveData /O /Z stack_ave, fileID
-			HDF5SaveData /O /Z stack_ave_report, fileID
+			//HDF5SaveData /O /Z stack_ave_report, fileID
 		endif
 		HDF5CloseFile fileID
 	endif
