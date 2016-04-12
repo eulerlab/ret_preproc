@@ -17,7 +17,7 @@ Function OS_hdf5Export()
 	else
 		print  "Triggervalues detected, exporting processed data."
 		WAVE OS_Parameters,ROIs,Traces0_raw,Traces0_znorm,Tracetimes0,Triggertimes,Triggervalues
-		WAVE stack_ave, stack_ave_report, wDataCh0, GeoC
+		WAVE stack_ave, stack_ave_report, wDataCh0, GeoC, Snippets0,SnippetsTimes0
 		HDF5SaveData /O /Z /IGOR=8 OS_parameters, fileID
 		HDF5SaveData /O /Z wParamsNum, fileID
 		HDF5SaveData /O /Z wParamsStr, fileID
@@ -35,6 +35,10 @@ Function OS_hdf5Export()
 			HDF5SaveData /O /Z GeoC, fileID
 			HDF5SaveData /O /Z stack_ave, fileID
 			//HDF5SaveData /O /Z stack_ave_report, fileID
+		endif
+		if (waveexists($"SnippetsTimes"+num2str(OS_Parameters[%Data_channel])))
+			HDF5SaveData /O /Z Snippets0, fileID
+			HDF5SaveData /O /Z SnippetsTimes0, fileID
 		endif
 		HDF5CloseFile fileID
 	endif
