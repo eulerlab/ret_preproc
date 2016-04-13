@@ -10,6 +10,7 @@
 #include "OS_LaunchCellLab"
 #include "OS_STRFs"
 #include "OS_EventFinder"
+#include "OS_hdf5Import"
 
 //----------------------------------------------------------------------------------------------------------------------
 Menu "ScanM", dynamic
@@ -35,7 +36,7 @@ function OS_GUI()
 	SetDrawEnv fstyle= 1
 	DrawText 24,334,"Step 5: Averaging (just for display) "
 	SetDrawEnv fstyle= 1
-	DrawText 24,394,"Step 6: Generate Database files"
+	DrawText 24,394,"Step 6: Database Export/Import (hdf5)"
 	Button step1,pos={78,39},size={147,26},proc=OS_GUI_Buttonpress,title="Make New Parameter Table"
 	Button step2a,pos={78,94},size={71,26},proc=OS_GUI_Buttonpress,title="One Channel"
 	Button step2b,pos={154,94},size={71,26},proc=OS_GUI_Buttonpress,title="Ratiometric"
@@ -48,7 +49,8 @@ function OS_GUI()
 	Button step5a,pos={78,341},size={43,26},proc=OS_GUI_Buttonpress,title="Ave"
 	Button step5b,pos={130,341},size={43,26},proc=OS_GUI_Buttonpress,title="Events"			
 	Button step5c,pos={181,341},size={43,26},proc=OS_GUI_Buttonpress,title="RFs"	
-	Button step6,pos={78,402},size={147,26},proc=OS_GUI_Buttonpress,title="Export for database"
+	Button step6a,pos={78,402},size={71,26},proc=OS_GUI_Buttonpress,title="Export"
+	Button step6b,pos={154,402},size={71,26},proc=OS_GUI_Buttonpress,title="Import"	
 	
 	HideTools/A
 end
@@ -98,9 +100,12 @@ Function OS_GUI_Buttonpress(ba) : ButtonControl
 				case "step5c":
 					OS_STRFs()
 					break
-				case "step6":
+				case "step6a":
 					OS_hdf5Export()
 					break										
+				case "step6b":
+					OS_hdf5Import("")
+					break
 			endswitch
 			break
 		case -1: // control being killed

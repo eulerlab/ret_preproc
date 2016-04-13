@@ -60,6 +60,7 @@ variable nY = DimSize(InputStack,1)
 string output_name1 = "Snippets"+Num2Str(Channel)
 string output_name2 = "Averages"+Num2Str(Channel)
 string output_name3 = "AverageStack"+Num2Str(Channel)
+string output_name4 = "SnippetsTimes"+Num2Str(Channel) // andre addition 2016 04 13
 
 
 variable tt,rr,ll,pp,xx,yy,ff
@@ -100,13 +101,16 @@ print "Note: Last", IgnoreLastXseconds, "s are also clipped"
 variable FrameDuration = nY*LineDuration // in seconds
 variable nPoints = (nF * FrameDuration) / LineDuration
 make /o/n=(nPoints,nRois) OutputTracesUpsampled = 0 // in line precision - deafult 500 Hz
+make /o/n=(nPoints,nRois) OutputTimesUpsampled = 0 // Andre 2016 04 13
 for (rr=0;rr<nRois;rr+=1)
 // for linear interpolation
 	make /o/n=(nF*nY) CurrentTrace = NaN
+	make /o/n=(nF*nY) CurrentTime = NaN	// Andre addition 2016 04 13
 	setscale x,InputTraceTimes[0][rr],InputTraceTimes[nF-1][rr],"s" CurrentTrace
 	for (ff=0;ff<nF-1;ff+=1)
 		for (yy=0;yy<nY; yy+=1)
 			CurrentTrace[ff*nY+yy]=(InputTraces[ff+1][rr]*yy+InputTRaces[ff][rr]*(nY-yy))/nY
+			CurrentTime[ff*nY+yy]=(InputTraceTimes[ff+1][rr]*yy+InputTraceTimes[ff][rr]*(nY-yy))/nY // andre addition 2016 04 13
 		endfor
 	endfor
 
@@ -118,18 +122,22 @@ for (rr=0;rr<nRois;rr+=1)
 
 	variable lineshift = round(InputTraceTimes[0][rr] / LineDuration)
 	OutputTracesUpsampled[lineshift,nPoints-4*FrameDuration/LineDuration][rr] = CurrentTrace[p-lineshift] // ignores last 4 frames of original recording to avoid Array overrun
+	OutputTimesUpsampled[lineshift,nPoints-4*FrameDuration/LineDuration][rr] = CurrentTime[p-lineshift] // andre additino 2016 04 13
 endfor
 
 // Snipperting and Averaging
 
 make /o/n=(SnippetDuration * 1/LineDuration,nLoops,nRois) OutputTraceSnippets = 0 // in line precision
+make /o/n=(SnippetDuration * 1/LineDuration,nLoops,nRois) OutputTimeSnippets = 0 // Andre 2016 04 13
 make /o/n=(SnippetDuration * 1/LineDuration,nRois) OutputTraceAverages = 0 // in line precision
+
 setscale /p x,0,LineDuration,"s" OutputTraceSnippets,OutputTraceAverages
 
 for (rr=0;rr<nRois;rr+=1)
 	for (ll=0;ll<nLoops;ll+=1)
 		OutputTraceSnippets[][ll][rr]=OutputTracesUpsampled[p+Triggertimes[ll*TriggerMode+Ignore1stXTriggers]/LineDuration][rr]
 		OutputTraceAverages[][rr]+=OutputTracesUpsampled[p+Triggertimes[ll*TriggerMode+Ignore1stXTriggers]/LineDuration][rr]/nLoops
+		OutputTimeSnippets[][ll][rr] = OutputTimesUpsampled[p+Triggertimes[ll*TriggerMode+Ignore1stXTriggers]/LineDuration][rr]		// Andre 2016 04 13
 	endfor
 endfor
 
@@ -164,12 +172,14 @@ if (AverageStack_make==1)
 	endif
 	
 	duplicate /o OutputStack $output_name3
+
 endif
 
 // export handling
 duplicate /o OutputTraceSnippets $output_name1
 duplicate /o OutputTraceAverages $output_name2
-
+duplicate /o OutputTimeSnippets $output_name4
+	
 // display
 
 if (Display_averages==1)
