@@ -88,6 +88,10 @@ SetDimLabel 0,entry_position,Trigger_LevelRead_after_lines,OS_Parameters
 OS_Parameters[%Trigger_levelread_after_lines] = 2  // to read "Triggervalue" - want to avoid landing on the slope of the trigger - default 2
 entry_position+=1
 
+SetDimLabel 0,entry_position,Skip_Last_Trigger,OS_Parameters // KF 20160310
+OS_Parameters[%Skip_Last_Trigger] = 0  // skips last trigger, e.g. when last loop is not complete - default 0
+entry_position+=1
+
 SetDimLabel 0,entry_position,Trigger_DisplayHeight,OS_Parameters
 OS_Parameters[%Trigger_DisplayHeight] = 6  // How long are the trigger lines in the display (in SD) - default 6
 entry_position+=1

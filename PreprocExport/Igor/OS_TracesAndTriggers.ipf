@@ -48,6 +48,7 @@ variable TriggerHeight_Display = OS_Parameters[%Trigger_DisplayHeight]
 variable LineDuration = OS_Parameters[%LineDuration]
 variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
 variable IgnoreLastXseconds = OS_Parameters[%IgnoreLastXseconds]
+variable SkipLastTrigger = OS_Parameters[%Skip_Last_Trigger] // KF 20160310
 
 // data handling
 string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
@@ -57,6 +58,7 @@ string output_name2 = "Traces"+Num2Str(DataChannel)+"_znorm"
 string output_name3 = "Tracetimes"+Num2Str(DataChannel)
 string output_name4 = "Triggertimes"
 string output_name5 = "Triggervalues"
+string output_name6 = "Triggertimes_Frame"
 
 duplicate /o $input_name1 InputData
 duplicate /o $input_name2 InputTriggers
@@ -69,15 +71,17 @@ make /o/n=(nF,nRois) OutputTraces_raw = 0
 make /o/n=(nF,nRois) OutputTraces_zscore = 0
 make /o/n=(nF,nRois) OutputTraceTimes = 0
 make /o/n=(nF) OutputTriggerTimes = NaN
+make /o/n=(nF) OutputTriggerTimes_Frame = NaN
 make /o/n=(nF) OutputTriggerValues = NaN
 variable FrameDuration = nY * LineDuration
 
 // call SARFIA function GeoC to get ROI positions
+setscale x, 0, nX, ROIs // so that Geometric centre reads out pixel not microns KF 20160310
+setscale y, 0, nY, ROIs
 GeometricCenter(ROIs)
 wave GeoC
 
 variable ff,xx,yy,rr,tt
-
 
 // find Triggers
 variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
@@ -85,32 +89,39 @@ variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
 variable nTriggers = 0
 for (ff=0;ff<nF-1;ff+=1)
 	for (yy=0;yy<nY;yy+=1)
-		if (InputTriggers[0][yy][ff]>trigger_threshold)
-			OutputTriggerTimes[nTriggers]=ff*nY*LineDuration+yy*LineDuration // triggertime in seconds, with line precision (2 ms)
-			if (yy+levelread_nY_after_trigger<nY)
-				OutputTriggerValues[nTriggers]=InputTriggers[0][yy+levelread_nY_after_trigger][ff]
-			else
-				OutputTriggerValues[nTriggers]=InputTriggers[0][yy+levelread_nY_after_trigger-nY][ff+1]
-			endif
-			
-			variable skiplines = lineskip_after_trigger
-			do
-				if (skiplines>nY)
-					skiplines-=nY
-					ff+=1
+		for (xx=0; xx<nX; xx+=1) // KF 20160310; trigger sometimes only few pixel long
+			if (InputTriggers[xx][yy][ff]>trigger_threshold)
+				yy+=1
+				OutputTriggerTimes[nTriggers]=ff*nY*LineDuration+yy*LineDuration // triggertime in seconds, with line precision (2 ms)
+				OutputTriggerTimes_Frame[nTriggers]=ff // KF 20160310
+				if (yy+levelread_nY_after_trigger<nY)
+					OutputTriggerValues[nTriggers]=InputTriggers[0][yy+levelread_nY_after_trigger][ff]
 				else
-					break
+					OutputTriggerValues[nTriggers]=InputTriggers[0][yy+levelread_nY_after_trigger-nY][ff+1]
 				endif
-			while(1)
-			yy+=round(skiplines)
-			if (yy>nY-1)
-				yy-=nY
-				ff+=1
-			endif			
-			nTriggers+=1
-		endif	
+			
+				variable skiplines = lineskip_after_trigger
+				do
+					if (skiplines>nY)
+						skiplines-=nY
+						ff+=1
+					else
+						break
+					endif
+				while(1)
+				yy+=round(skiplines)
+				if (yy>nY-1)
+					yy-=nY
+					ff+=1
+				endif			
+				nTriggers+=1
+			endif	
+		endfor
 	endfor
 endfor
+if (SkipLastTrigger == 1) // KF 20160310
+	nTriggers-=1
+endif
 print nTriggers, " Triggers found"
 
 // extract traces according to ROIs
@@ -129,7 +140,7 @@ for (rr=0;rr<nRois;rr+=1)
 	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
 	Wavestats/Q BaselineTrace
 	OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
-	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration // correct each ROIs timestamp by it's Y position in the scan
+	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration // correct each ROIs timestamp by it's Y position in the scan // use y values not x values KF 20160310
 endfor
 
 // export handling
@@ -138,6 +149,7 @@ duplicate /o OutputTraces_zscore $output_name2
 duplicate /o OutputTraceTimes $output_name3
 duplicate /o OutputTriggerTimes $output_name4
 duplicate /o OutputTriggerValues $output_name5
+duplicate/ o OutputTriggerTimes_Frame $output_name6
 
 // Display
 if (Display_traces==1)
@@ -161,11 +173,11 @@ if (Display_traces==1)
 	Label bottom "\\Z10Time (s)"
 	
 	// triggers
-	variable nTriggers_max = nTriggers // otherwise it takes ages to display things like noise triggers... now it only plots the first 100
+	variable nTriggers_skip = nTriggers // otherwise it takes ages to display things like noise triggers... now it only plots every 20th trigger
 	if (nTriggers>100)
-		nTriggers_max = 100
+		nTriggers_skip = 20
 	endif
-	for (tt=0;tt<nTriggers_max;tt+=1)
+	for (tt=0;tt<nTriggers;tt+=nTriggers_skip)
 		ShowTools/A arrow
 		SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,0);DelayUpdate
 		DrawLine OutputTriggerTimes[tt],-TriggerHeight_Display,OutputTriggerTimes[tt],TriggerHeight_Display
@@ -186,8 +198,6 @@ if (Display_traces==1)
 endif
 
 // cleanup
-killwaves InputData, InputTriggers, OutputTraces_raw,OutputTraces_zscore,OutputTraceTimes,OutputTriggerTimes,BaselineTrace,M_Colors, OutputTriggerValues
-
-
+killwaves InputData, InputTriggers, OutputTraces_raw,OutputTraces_zscore,OutputTraceTimes,OutputTriggerTimes,BaselineTrace,M_Colors, OutputTriggerValues, OutputTriggerTimes_Frame
 
 end

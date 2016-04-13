@@ -139,11 +139,11 @@ end
 function OS_CloneSarfiaRoi()
 
 // 1 // check for existing Sarfia Mask from Laplace Operator thing
-if (waveexists($"MTROIWave")==0)
-	print "Warning: MTROIWave does not exist - doing nothing..."
+if (waveexists($"ROIs")==0) // KF 20150310; changed name of preexisting roi mask from MTROIWave to ROIs
+	print "Warning: ROIs does not exist - doing nothing..."
 else	
 	
-	wave MTROIWave
+	wave ROIs
 		
 	wave OS_Parameters
 	// flags from "OS_Parameters"
@@ -171,7 +171,7 @@ else
 	
 	// make SD average
 	make /o/n=(nX,nY) Stack_SD = 0 // Avg projection of InputData
-	make /o/n=(nX,nY) ROIs = 1 // empty ROI wave
+	make /o/n=(nX,nY) ROIs_corrected = 1 // empty ROI wave
 	make /o/n=(nF) currentwave = 0
 	for (xx=X_cut;xx<nX;xx+=1)
 		for (yy=0;yy<nY;yy+=1)
@@ -180,6 +180,15 @@ else
 			Stack_SD[xx][yy]=V_SDev
 		endfor
 	endfor
+	
+	// take MTROIWave and work out if it's dimensions are cropped in X axis (e.g. to get rid of light artifact before using the Laplace)
+	Variable nX_ROIs = Dimsize(ROIs,0)
+	
+	// Project MTROIwave onto ROIs with correct x offset
+	ROIs_corrected[nX-nX_ROIs,nX-1][]=ROIs[p-(nX-nX_ROIs)][q]
+	duplicate/o ROIs_corrected, ROIs
+	killwaves ROIs_corrected
+	
 	setscale /p x,-nX/2*px_Size,px_Size,"µm" Stack_SD,ROIs
 	setscale /p y,-nY/2*px_Size,px_Size,"µm" Stack_SD, ROIs
 	
@@ -189,12 +198,6 @@ else
 	Appendimage ROIs
 	ModifyImage ROIs explicit=1,eval={-1,65535,0,0}
 	ModifyGraph height={Aspect,nY/nX}
-	
-	// take MTROIWave and work out if it's dimensions are cropped in X axis (e.g. to get rid of light artifact before using the Laplace)
-	Variable nX_MTROIWave = Dimsize(MTRoiWave,0)
-	
-	// Project MTROIwave onto ROIs with correct x offset
-	ROIs[nX-nX_MTROIWave,nX-1][]=MTROIWave[p-(nX-nX_MTROIWave)][q]
 	
 	// colour in the ROIs
 	make /o/n=(1) M_Colors
