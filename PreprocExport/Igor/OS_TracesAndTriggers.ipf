@@ -49,8 +49,10 @@ variable LineDuration = OS_Parameters[%LineDuration]
 variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
 variable IgnoreLastXseconds = OS_Parameters[%IgnoreLastXseconds]
 variable SkipLastTrigger = OS_Parameters[%Skip_Last_Trigger] // KF 20160310
+variable TriggerMode = OS_Parameters[%Trigger_Mode]
 
 // data handling
+wave wParamsNum // Reads data-header
 string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
 string input_name2 = "wDataCh"+Num2Str(TriggerChannel)
 string output_name1 = "Traces"+Num2Str(DataChannel)+"_raw"
@@ -79,6 +81,12 @@ variable FrameDuration = nY * LineDuration
 setscale x, 0, nX, ROIs // so that Geometric centre reads out pixel not microns KF 20160310
 setscale y, 0, nY, ROIs
 GeometricCenter(ROIs)
+// calculate Pixel / ROI sizes in microns
+variable zoom = wParamsNum(30) // extract zoom
+variable px_Size = (0.65/zoom * 110)/nX // microns
+setscale /p x,-nX/2*px_Size,px_Size,"µm" ROIs // scale ROIs back to what they were - related to KF 20160310 above - fix by Tom
+setscale /p y,-nY/2*px_Size,px_Size,"µm"  ROIs
+
 wave GeoC
 
 variable ff,xx,yy,rr,tt
@@ -123,6 +131,13 @@ if (SkipLastTrigger == 1) // KF 20160310
 	nTriggers-=1
 endif
 print nTriggers, " Triggers found"
+if (TriggerMode>1)
+	print "Skipping every",TriggerMode,",Triggers!"
+endif	
+
+//redimension OutputTriggerValues so it doesn't have trailing NaN's
+redimension /N=(nTriggers) OutputTriggerValues // Andre 2016 04 14
+redimension /N=(nTriggers) OutputTriggerTimes
 
 // extract traces according to ROIs
 for (rr=0;rr<nRois;rr+=1)
@@ -173,9 +188,10 @@ if (Display_traces==1)
 	Label bottom "\\Z10Time (s)"
 	
 	// triggers
-	variable nTriggers_skip = nTriggers // otherwise it takes ages to display things like noise triggers... now it only plots every 20th trigger
+	variable nTriggers_skip = TriggerMode // otherwise it takes ages to display things like noise triggers... now it only plots every 20th trigger
 	if (nTriggers>100)
 		nTriggers_skip = 20
+		print "Note: displaying only one in 20 Triggers!"
 	endif
 	for (tt=0;tt<nTriggers;tt+=nTriggers_skip)
 		ShowTools/A arrow

@@ -3,14 +3,36 @@
 function OS_ParameterTable()
 
 // make a new table
-make /o/n=(100) OS_Parameters = NaN
+make /o/n=100 OS_Parameters = NaN
 
 // reads data-header
 wave wParamsNum
 
 // Define Entries
 variable entry_position = 0
+
+//////////// from the wParamsNum wave // Andre 2016 04 14
+Variable xPixelsInd,yPixelsInd,realPixDurInd,lineDur,sampRate,sampPeriod,zoomIndx// Andre 2016 04 14
+
 /// GENERAL ////////////////////////////////////////////////////////////////////////////////////////////////
+
+setdimlabel 0,entry_position,LineDuration,OS_Parameters
+xPixelsInd = FindDimLabel(wParamsNum,0,"User_dxPix" )// Andre 2016 04 14
+yPixelsInd = FindDimLabel(wParamsNum,0,"User_dyPix" )// Andre 2016 04 14
+realPixDurInd = FindDimLabel(wParamsNum,0,"RealPixDur" )// Andre 2016 04 14
+lineDur = (wParamsNum[xPixelsInd] *  wParamsNum[realPixDurInd]) * 10^-6// Andre 2016 04 14
+OS_Parameters[%LineDuration] = lineDur
+entry_position+=1
+
+setdimlabel 0,entry_position,'samp_period',OS_Parameters
+sampPeriod = (lineDur* wParamsNum[yPixelsInd])// Andre 2016 04 14
+OS_Parameters[%samp_period] = sampPeriod
+entry_position+=1
+
+setdimlabel 0,entry_position,samp_rate_Hz,OS_Parameters
+sampRate = 1/sampPeriod// Andre 2016 04 14
+OS_Parameters[%samp_rate_Hz] = sampRate
+entry_position+=1
 
 SetDimLabel 0,entry_position,Data_Channel,OS_Parameters
 OS_Parameters[%Data_Channel] = 0 // Fluorescence Data in wDataChX - default 0
@@ -30,12 +52,6 @@ entry_position+=1
 
 SetDimLabel 0,entry_position,LightArtifact_cut,OS_Parameters
 OS_Parameters[%LightArtifact_cut] = 3 // nPixels cut in X to remove LightArtifact - default 3
-entry_position+=1
-
-SetDimLabel 0,entry_position,LineDuration,OS_Parameters
-OS_Parameters[%LineDuration] = wParamsNum(7) * wParamsNum(17) * 10^-6  // == 0.002, usually; number of seconds per scan line
-// Note - initially had this manual entry = 0.002, but some scan protocols have this time not equal to 2 ms, so instead now I calculate it from effective pixel duration (header position 7) multiplied by
-// actual frame width (i.-e. beyond the cropped x-scale shown during the scan, header position 17. the unit in "7" is microseconds, so to scale to seconds is * 10^-6 
 entry_position+=1
 
 /// DETREND ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,6 +145,7 @@ entry_position+=1
 SetDimLabel 0,entry_position,AverageStack_dF,OS_Parameters
 OS_Parameters[%AverageStack_dF] = 1 // Subtract Average
 entry_position+=1
+
 /// EVENT TRIGGERING  ////////////////////////////////////////////////////////////////////////
 
 SetDimLabel 0,entry_position,Events_nMax,OS_Parameters
@@ -142,7 +159,6 @@ entry_position+=1
 SetDimLabel 0,entry_position,Events_RateBins_s,OS_Parameters
 OS_Parameters[%Events_RateBins_s] = 0.05 // "Smooth_size" for Event rate plots (s) - default 0.05
 entry_position+=1
-
 
 /// RF Calculations  /////////////////////////////////////////////////////////////////////////
 
@@ -162,8 +178,10 @@ SetDimLabel 0,entry_position,Noise_Compression,OS_Parameters
 OS_Parameters[%Noise_Compression] = 10 // Noise RF calculation speed up
 entry_position+=1
 
-
+/// redimension the OS_parameter table, so it doesn't have trailing NaN's
+redimension /N=(entry_position) OS_Parameters
+		
 // Display the Table
-edit /k=1 /W=(50,50,300,500)OS_Parameters.l, OS_Parameters
+edit /k=1 /W=(50,50,300,700)OS_Parameters.l, OS_Parameters
 
 end

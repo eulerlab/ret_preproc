@@ -2,9 +2,7 @@
 
 Function OS_hdf5Export()
 	Variable fileID
-
 	Wave wParamsNum,wParamsStr
-
 	NewPath targetPath
 	string pathName = "targetPath"
 	HDF5CreateFile/P=$pathName /O /Z fileID as GetDataFolder(0)
@@ -31,6 +29,7 @@ Function OS_hdf5Export()
 		HDF5SaveData /O /Z Triggervalues, fileID
 		HDF5SaveData /O /Z GeoC, fileID // Andre - now also saves cell positions in the field
 		HDF5SaveData /O /Z stack_ave, fileID // Andre - now also saves the mean image across the stack in the data channel 0
+
 		if (waveexists($"SnippetsTimes"+num2str(OS_Parameters[%Data_channel]))) // Andre 2016 04 13
 			HDF5SaveData /O /Z Snippets0, fileID
 			HDF5SaveData /O /Z SnippetsTimes0, fileID
