@@ -50,6 +50,7 @@ variable Ignore1stXseconds = OS_Parameters[%Ignore1stXseconds]
 variable IgnoreLastXseconds = OS_Parameters[%IgnoreLastXseconds]
 variable SkipLastTrigger = OS_Parameters[%Skip_Last_Trigger] // KF 20160310
 variable TriggerMode = OS_Parameters[%Trigger_Mode]
+variable StimulatorDelay = OS_Parameters[%StimulatorDelay]
 
 // data handling
 wave wParamsNum // Reads data-header
@@ -155,7 +156,7 @@ for (rr=0;rr<nRois;rr+=1)
 	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
 	Wavestats/Q BaselineTrace
 	OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
-	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration // correct each ROIs timestamp by it's Y position in the scan // use y values not x values KF 20160310
+	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration  + StimulatorDelay/1000 // correct each ROIs timestamp by it's Y position in the scan // use y values not x values KF 20160310 // and by stimulator delay!
 endfor
 
 // export handling

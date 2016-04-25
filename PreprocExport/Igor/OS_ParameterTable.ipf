@@ -54,6 +54,10 @@ SetDimLabel 0,entry_position,LightArtifact_cut,OS_Parameters
 OS_Parameters[%LightArtifact_cut] = 3 // nPixels cut in X to remove LightArtifact - default 3
 entry_position+=1
 
+SetDimLabel 0,entry_position,StimulatorDelay,OS_Parameters
+OS_Parameters[%StimulatorDelay] = 27 // nMilliseconds delay of the stimulator between the trigger and the light actually hitting the tissue. Old windows (XP) gives 27, new (Windows 7, installed 25th April 2016) is 100 ms
+entry_position+=1
+
 /// DETREND ////////////////////////////////////////////////////////////////////////////////////////////////
 
 SetDimLabel 0,entry_position,Detrend_smooth_window,OS_Parameters
