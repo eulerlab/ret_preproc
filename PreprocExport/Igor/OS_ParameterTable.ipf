@@ -7,13 +7,15 @@ make /o/n=100 OS_Parameters = NaN
 
 // reads data-header
 wave wParamsNum
+wave /T wParamsStr
 
 // Define Entries
 variable entry_position = 0
 
 //////////// from the wParamsNum wave // Andre 2016 04 14
-Variable xPixelsInd,yPixelsInd,realPixDurInd,lineDur,sampRate,sampPeriod,zoomIndx// Andre 2016 04 14
-
+Variable xPixelsInd,yPixelsInd,realPixDurInd,lineDur,sampRate,sampPeriod,zoomIndx, pcName,delay,year,month,day,recday// Andre 2016 04 14 & 04 26
+string recDate
+string setup
 /// GENERAL ////////////////////////////////////////////////////////////////////////////////////////////////
 
 setdimlabel 0,entry_position,LineDuration,OS_Parameters
@@ -55,7 +57,39 @@ OS_Parameters[%LightArtifact_cut] = 3 // nPixels cut in X to remove LightArtifac
 entry_position+=1
 
 SetDimLabel 0,entry_position,StimulatorDelay,OS_Parameters
-OS_Parameters[%StimulatorDelay] = 27 // nMilliseconds delay of the stimulator between the trigger and the light actually hitting the tissue. Old windows (XP) gives 27, new (Windows 7, installed 25th April 2016) is 100 ms
+//get some variables, 
+//like the computer name (indicates which setup was used)
+pcName = FindDimLabel(wParamsStr,0,"ComputerName" )
+
+//print setup
+setup = wParamsStr['pcName']
+//and date of the recording
+recDay = FindDimLabel(wParamsStr,0,"DateStamp_d_m_y" )
+recDate = wParamsStr['recDay']
+//convert each part of the string to numbers
+year = str2num(recDate[0,3])
+month=str2num(recDate[5,7])
+day = str2num(recDate[7,9])
+
+if (stringmatch(setup,"euler14_01")) // SETUP 1
+		OS_Parameters[%StimulatorDelay] = 0// nMilliseconds delay of the stimulator between the trigger and the 
+   											 // light actually hitting the tissue. for Arduino stimulator this is 0ms
+   											  
+elseif (stringmatch(setup,"euler14_lab2-1"))		  // SETUP 2
+	if (year < 2016)
+		OS_Parameters[%StimulatorDelay] = 27  // old stimulator software (using directx) written in Pascal is 27,
+	elseif (year == 2016)
+		if (month <= 4 && day <= 24)
+			OS_Parameters[%StimulatorDelay] = 27  // old stimulator software (using directx) written in Pascal is 27,
+		else
+			OS_Parameters[%StimulatorDelay] = 100//new python software (using openGL) installed 25th April 2016) is 100 ms
+		endif
+	else
+		OS_Parameters[%StimulatorDelay] = 100//new python software (using openGL) installed 25th April 2016) is 100 ms
+	endif
+else										  // SETUP 3 (downstairs)
+	OS_Parameters[%StimulatorDelay] = 0  // Right now only has Arduino stimulator on it
+endif
 entry_position+=1
 
 /// DETREND ////////////////////////////////////////////////////////////////////////////////////////////////
