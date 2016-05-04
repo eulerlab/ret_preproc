@@ -410,12 +410,12 @@ function FG_onFormPopMenuProc(pa) : PopupMenuControl
 			if(wGUIType[iEntr] == GUIEntry_popup)
 				pwVal[iEntr]	= pa.popNum
 			elseif(wGUIType[iEntr] == GUIEntry_list)	
-				if(!StringMatch(pwValStr[iEntr], "*" +pa.popStr +"*"))
+			//	if(!StringMatch(pwValStr[iEntr], "*" +pa.popStr +"*"))
 					if(strlen(pwValStr[iEntr]) > 0)
 						pwValStr[iEntr] 	+= ";"
 					endif
 					pwValStr[iEntr] 	+= pa.popStr
-				endif	
+			//	endif	
 			endif
 			FG_updateRules()
 			break

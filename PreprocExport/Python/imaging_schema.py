@@ -114,19 +114,7 @@ class Indicator(dj.Manual):
     brain_inject_q              :varchar(255)                   # numerical rating of the brain injection quality
     brain_inject_rem            :varchar(255)                   # comments on the brain injection
     """
-    
-@schema
-class Pharmacology(dj.Manual): 
-    definition = """
-    # Information about pharmacology used in experiment
 
-    -> Experiment
-    
-    pharm_drug                  :varchar(255)                   # name of drug which was applied
-    --- 
-    pharm_drug_conc             :varchar(255)                   # concentration of drug
-    pharm_rem                   :varchar(255)                   # comments on the drug application
-    """
 
 @schema
 class Field(dj.Manual):
@@ -139,7 +127,23 @@ class Field(dj.Manual):
     ---
     roi_mask                    :longblob                       # roi mask for the recording field  
     """
-        
+
+# Stimulus
+
+    
+@schema
+class Pharmacology(dj.Manual): 
+    definition = """
+    # Information about pharmacology used in experiment
+
+    -> Field
+    
+    pharm_drug                  :varchar(255)                   # name of drug which was applied
+    --- 
+    pharm_drug_conc             :varchar(255)                   # concentration of drug
+    pharm_rem                   :varchar(255)                   # comments on the drug application
+    """
+           
 @schema
 class Recording(dj.Manual): 
     definition="""
