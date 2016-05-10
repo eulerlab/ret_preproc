@@ -88,7 +88,10 @@ if (Ignore1stXTriggers>0)
 endif
 variable SnippetDuration = Triggertimes[TriggerMode+Ignore1stXTriggers]-Triggertimes[0+Ignore1stXTriggers] // in seconds
 
-variable Last_Snippet_Length = (Triggertimes[nTriggers-1]-triggertimes[nTriggers-TriggerMode])/SnippetDuration
+
+//variable Last_Snippet_Length = (Triggertimes[nTriggers-1]-triggertimes[nTriggers-TriggerMode])/SnippetDuration
+variable Last_Snippet_Length = last_data_time_allowed-Triggertimes[nTriggers-1]
+
 if (Last_Snippet_Length<SnippetDuration)
 	IgnoreLastXTriggers = TriggerMode
 endif
