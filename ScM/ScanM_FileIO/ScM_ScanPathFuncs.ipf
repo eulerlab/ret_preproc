@@ -2,17 +2,16 @@
 //	Project		: ScanMachine (ScanM)
 //	Module		: ScM_ScanPathFuncs.ipf
 //	Author		: Thomas Euler, Tom Baden, Le Chang
-//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2015
+//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2016
 //	History		: 2010-10-22 	Creation
-//
-//	function	..
+//	             2016-02-08	Added XYZScan1, allowing vertical slice scans
 //
 // ----------------------------------------------------------------------------------
 #pragma rtGlobals=1		// Use modern global access method.
 
 #ifndef ScM_ipf_present
 constant 	ScM_TTLlow		= 0
-constant 	ScM_TTLhigh		= 5	
+constant 	ScM_TTLhigh	= 5	
 #endif
 
 // ----------------------------------------------------------------------------------
@@ -265,96 +264,203 @@ function 	XYScan3 (wFuncParams)
 end	
 
 // ---------------------------------------------------------------------------------- 
-function 	XYScan4 (wFuncParams)
+//function 	XYScan4 (wFuncParams)
+//	wave		wFuncParams
+//
+//	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, iX, iY, iB, iP, nB
+//	variable	yInc1, xInc1, yInc2, xInc2, yVLastLine, nPntsLineOffs
+//	variable	xVMax, yVMax, nStimPerFr
+//	variable	nPixPerGenLockPulse
+//	
+//	nPntsTotal		= wFuncParams[0]	// = dx*dy *nStimPerFr
+//	dx				= wFuncParams[1]	// including nPntsRetrace
+//	dy				= wFuncParams[2]	
+//	nPntsRetrace	= wFuncParams[3]	// # of points per line used for retrace	
+//	nPntsLineOffs	= wFuncParams[4]	// # of points per line before pixels are aquired
+//										// (for allowing the scanner to "settle")
+//	nStimPerFr		= wFuncParams[5]	// # of stimulus buffers per frame
+//										
+//	dxScan			= dx -nPntsRetrace
+//	if(dx > dy)
+//		xVMax		= 0.5
+//		yVMax		= dy/dxScan /2
+//	else	 
+//		xVMax		= dxScan/dy /2
+//		yVMax		= 0.5
+//	endif	
+//	xInc1			= 2*xVMax /(nPntsRetrace +1)
+//	yInc1			= 2*yVMax /(dy-1) /(nPntsRetrace +1)
+//	
+//	yInc2			= 2*yVMax /((nPntsRetrace +1) *2)
+//	xInc2			= xInc1 /2
+//	
+//	Make/O/N=(nPntsTotal) StimX, StimY, StimPC, StimGenLock
+//	StimPC			= ScM_TTLlow	
+//	StimGenLock		= ScM_TTLlow
+//	
+//	for(iY=0; iY<dy; iY+=1)
+//		// Define scan points
+//		//
+//		for(iX=0; iX<dxScan; iX+=1)
+//			StimX[iY*dx +iX]		= 2*xVMax *iX/(dxScan -1) -xVMax
+//			StimY[iY*dx +iX]		= 2*yVMax *(iY/(dy -1)) -yVMax				
+//			if(iX >= nPntsLineOffs)
+//				StimPC[iY*dx +iX]	= ScM_TTLhigh
+//			endif	
+//		endfor
+//		if(nPntsRetrace <= 0)		
+//			continue
+//		endif	
+//		yVLastLine					= StimY[iY*dx +dxScan -1] 	
+//		
+//		// Define retrace points, if there is a retrace section
+//		// 
+//		if(iY < (dy-1))
+//			// Is not yet last line, thus line retrace
+//			//
+//			for(iX=dxScan; iX<dx; iX+=1)
+//				StimX[iY*dx +iX]	= xVMax -xInc1 *(ix -dxScan +1)
+//				StimY[iY*dx +iX]	= yVLastLine +yInc1 *(ix -dxScan +1)
+//			endfor
+//		else
+//			// Last line, thus retrace needs to go back to starting position
+//			//
+//			for(iX=dxScan; iX<dx; iX+=1)
+//				StimX[iY*dx +iX]	= xVMax -xInc2 *(ix -dxScan +1)
+//				StimY[iY*dx +iX]	= yVLastLine -yInc2 *(ix-dxScan +1)
+//			endfor
+//		endif	
+//		
+//		// Define genlock-sync pulse every 8 lines
+//		//
+//		if(nPixPerGenLockPulse > 0)
+//			nPixPerGenLockPulse -= 1
+//			if(nPixPerGenLockPulse == 0)
+//				StimGenLock[iY*dx +iX]	= ScM_TTLlow
+//			endif
+//		endif	
+//		if(mod(iY, 8) == 0)
+//			StimGenLock[iY*dx +iX]	= ScM_TTLhigh
+//			nPixPerGenLockPulse  = 5
+//		endif	
+//	endfor	
+//	
+//	nB		= nPntsTotal/nStimPerFr
+//	for(iB=1; iB<nStimPerFr; iB+=1)
+//		iP	= nB*iB
+//		StimX[iP, iP+nB-1]  		= StimX[p-iP]	
+//		StimY[iP, iP+nB-1]  		= StimY[p-iP]
+//		StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
+//		StimGenLock[iP, iP+nB-1] 	= StimGenLock[p-iP]
+//	endfor
+//end	
+
+// ---------------------------------------------------------------------------------- 
+// XYZ scans (slices)
+// ---------------------------------------------------------------------------------- 
+function 	XYZScan1 (wFuncParams)
 	wave		wFuncParams
 
-	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, iX, iY, iB, iP, nB
-	variable	yInc1, xInc1, yInc2, xInc2, yVLastLine, nPntsLineOffs
-	variable	xVMax, yVMax, nStimPerFr
-	variable	nPixPerGenLockPulse
+	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, nB, iY, iB, iP
+	variable	nPntsLineOffs
+	variable	xVMax, yVMax, nStimPerFr 
+	variable 	dz, nZPntsRetrace, nZPntsLineOffs, usesZFastScan
+	variable	dzScan, zVMax, iZ, lastVZ, iZFract, corr, direct
 	
-	nPntsTotal		= wFuncParams[0]	// = dx*dy *nStimPerFr
+	nPntsTotal		= wFuncParams[0]	// = d_*dy *nStimPerFr
 	dx				= wFuncParams[1]	// including nPntsRetrace
 	dy				= wFuncParams[2]	
-	nPntsRetrace	= wFuncParams[3]	// # of points per line used for retrace	
-	nPntsLineOffs	= wFuncParams[4]	// # of points per line before pixels are aquired
-										// (for allowing the scanner to "settle")
-	nStimPerFr		= wFuncParams[5]	// # of stimulus buffers per frame
-										
-	dxScan			= dx -nPntsRetrace
-	if(dx > dy)
-		xVMax		= 0.5
-		yVMax		= dy/dxScan /2
-	else	 
-		xVMax		= dxScan/dy /2
-		yVMax		= 0.5
-	endif	
-	xInc1			= 2*xVMax /(nPntsRetrace +1)
-	yInc1			= 2*yVMax /(dy-1) /(nPntsRetrace +1)
+	dz				= wFuncParams[3]		
+	nPntsRetrace	= wFuncParams[4]	// # of points per line used for retrace	
+	nZPntsRetrace	= wFuncParams[5]
+	nPntsLineOffs	= wFuncParams[6]	// # of points per line before pixels are aquired
+	nZPntsLineOffs	= wFuncParams[7]
+	usesZFastScan	= wFuncParams[7]	// 0=x, 1=z as fast scanner
+	nStimPerFr		= wFuncParams[8]	// # of stimulus buffers per frame
+
+	if(usesZFastScan)
+		dzScan		= dz -nZPntsRetrace -nZPntsLineOffs
+		if(dz > dy)
+			zVMax	= 0.5
+			yVMax	= dy/dzScan /2
+		else	 
+			zVMax	= dzScan/dy /2
+			yVMax	= 0.5
+		endif	
 	
-	yInc2			= 2*yVMax /((nPntsRetrace +1) *2)
-	xInc2			= xInc1 /2
+		Make/O/N=(nPntsTotal) StimX, StimY, StimPC, StimZ
+		StimPC		= ScM_TTLlow	
+		StimX		= 0
 	
-	Make/O/N=(nPntsTotal) StimX, StimY, StimPC, StimGenLock
-	StimPC			= ScM_TTLlow	
-	StimGenLock		= ScM_TTLlow
-	
-	for(iY=0; iY<dy; iY+=1)
-		// Define scan points
-		//
-		for(iX=0; iX<dxScan; iX+=1)
-			StimX[iY*dx +iX]		= 2*xVMax *iX/(dxScan -1) -xVMax
-			StimY[iY*dx +iX]		= 2*yVMax *(iY/(dy -1)) -yVMax				
-			if(iX >= nPntsLineOffs)
-				StimPC[iY*dx +iX]	= ScM_TTLhigh
-			endif	
+		for(iY=0; iY<dy; iY+=1)
+			// Define scan points
+			//
+			for(iZ=0; iZ<dz; iZ+=1)
+				if(iZ < nZPntsLineOffs)
+					if(iY == 0)
+						StimY[iY*dz +iZ]	= -yVMax *(iZ /nZPntsLineOffs)
+					else 
+						StimY[iY*dz +iZ]	= 2*yVMax *(iY/(dy -1)) -yVMax			
+					endif	
+					corr					= (zVMax*nZPntsLineOffs/dz) *((nZPntsLineOffs -mod(iZ, dz) -1)/nZPntsLineOffs)^2
+					direct					= (mod(iY, 2)*2 -1)
+					StimZ[iY*dz +iZ]		= direct *((2*zVMax *iZ/(dz-1) -zVMax) +corr)
+
+				elseif(iZ < nZPntsLineOffs +dzScan)
+					StimY[iY*dz +iZ]		= 2*yVMax *(iY/(dy -1)) -yVMax			
+					StimZ[iY*dz +iZ]		= (mod(iY, 2)*2 -1) *(2*zVMax *iZ/(dz-1) -zVMax)
+
+				else
+					if(iY < (dy-1))
+						StimY[iY*dz +iZ]	= 2*yVMax *(iY/(dy -1)) -yVMax			
+					else
+						// Last line, thus slow scanner (Y) needs to go back to 
+						// starting position
+						//
+					//	if(iZ == (nZPntsLineOffs +dzScan +1))
+					//		lastVZ	   		= StimZ[iY*dz +iZ -1]
+					//	endif	
+						iZFract				= (iZ -nZPntsLineOffs -dzScan) /nZPntsRetrace
+						StimY[iY*dz +iZ]	= yVMax *(1 -iZFract) 
+					//	StimZ[iY*dz +iZ]	= lastVZ *(1 -iZFract)
+					endif	
+					corr					= (zVMax*nZPntsRetrace/dz) *((nZPntsRetrace +mod(iZ, dz) -dz) /nZPntsRetrace)^2
+					direct					= (mod(iY, 2)*2 -1)
+					StimZ[iY*dz +iZ]		= direct *((2*zVMax *iZ/(dz-1) -zVMax) -corr)
+				endif
+				
+				if((iZ >= nZPntsLineOffs) && (iZ < nZPntsLineOffs +dzScan))
+					StimPC[iY*dz +iZ]	= ScM_TTLhigh
+				endif	
+			endfor
 		endfor
-		if(nPntsRetrace <= 0)		
-			continue
-		endif	
-		yVLastLine					= StimY[iY*dx +dxScan -1] 	
-		
-		// Define retrace points, if there is a retrace section
-		// 
-		if(iY < (dy-1))
-			// Is not yet last line, thus line retrace
-			//
-			for(iX=dxScan; iX<dx; iX+=1)
-				StimX[iY*dx +iX]	= xVMax -xInc1 *(ix -dxScan +1)
-				StimY[iY*dx +iX]	= yVLastLine +yInc1 *(ix -dxScan +1)
-			endfor
-		else
-			// Last line, thus retrace needs to go back to starting position
-			//
-			for(iX=dxScan; iX<dx; iX+=1)
-				StimX[iY*dx +iX]	= xVMax -xInc2 *(ix -dxScan +1)
-				StimY[iY*dx +iX]	= yVLastLine -yInc2 *(ix-dxScan +1)
-			endfor
-		endif	
-		
-		// Define genlock-sync pulse every 8 lines
+		// Only positive values allowed for lens driver
 		//
-		if(nPixPerGenLockPulse > 0)
-			nPixPerGenLockPulse -= 1
-			if(nPixPerGenLockPulse == 0)
-				StimGenLock[iY*dx +iX]	= ScM_TTLlow
-			endif
-		endif	
-		if(mod(iY, 8) == 0)
-			StimGenLock[iY*dx +iX]	= ScM_TTLhigh
-			nPixPerGenLockPulse  = 5
-		endif	
-	endfor	
-	
-	nB		= nPntsTotal/nStimPerFr
-	for(iB=1; iB<nStimPerFr; iB+=1)
-		iP	= nB*iB
-		StimX[iP, iP+nB-1]  		= StimX[p-iP]	
-		StimY[iP, iP+nB-1]  		= StimY[p-iP]
-		StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
-		StimGenLock[iP, iP+nB-1] 	= StimGenLock[p-iP]
-	endfor
+		StimZ	+= zVMax
+		
+		nB		= nPntsTotal/nStimPerFr
+		for(iB=1; iB<nStimPerFr; iB+=1)
+			iP	= nB*iB
+			StimX[iP, iP+nB-1]  		= StimX[p-iP]	
+			StimY[iP, iP+nB-1]  		= StimY[p-iP]
+			StimZ[iP, iP+nB-1]  		= StimZ[p-iP]			
+			StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
+		endfor
+	endif	
 end	
+
+// ---------------------------------------------------------------------------------- 
+// ##########################		
+// 2016-02-11 ADDED, TE ==>
+//
+function	XYZScan1_scaleZ(val, scaler)
+	variable	val, scaler
+	
+	// ...
+	return val *scaler
+end
+// <==
+// ##########################		
 
 // ---------------------------------------------------------------------------------- 
 // X line scans
