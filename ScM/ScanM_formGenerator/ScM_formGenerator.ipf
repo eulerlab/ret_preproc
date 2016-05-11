@@ -208,8 +208,9 @@ function FG_createForm(sWinName)
 					wVal[iEntry]	= -1
 					wGUIType[iEntry]	= GUIEntry_string
 					if(StringMatch(sKey, "*_date"))
-						wValStr	[iEntry]	= Secs2Date(datetime,-2) +"_" +Secs2Time(datetime, 3) 
-						SetVariable $(sTemp), value=wValStr[iEntry], disable=2
+						wValStr	[iEntry]	= Secs2Date(datetime,-2)
+						//wValStr	[iEntry]	= Secs2Date(datetime,-2) +"_" +Secs2Time(datetime, 3) 
+						//SetVariable $(sTemp), value=wValStr[iEntry], disable=2
 					endif
 					break
 				
@@ -434,7 +435,9 @@ function FG_onFormButtonProc(ba) : ButtonControl
 	variable	iEntr
 	SVAR		sPath		= $("root:formGenFolder")
 	SVAR		sTables		= $("root:formGenTables")	
+	WAVE 		pwVal    	= $(sPath +StringFromList(2, sTables))	
 	WAVE/T		pwValStr	= $(sPath +StringFromList(0, sTables))
+	WAVE/T		pwOptStr	= $(sPath +StringFromList(3, sTables))	
 
 	switch( ba.eventCode )
 		case 2: // mouse up
@@ -442,6 +445,11 @@ function FG_onFormButtonProc(ba) : ButtonControl
 				case "buttonSave":
 				case "buttonSaveExit":				
 					sTemp	= ReplaceString("-", Secs2Date(datetime,-2), "")
+					iEntr  = FG_getIndex(sValType_string +"_animID")
+					sTemp += "_" +pwValStr[iEntr]
+					iEntr  = FG_getIndex(sValType_string +"_eye")
+					print iEntr, pwVal[iEntr], pwOptStr[iEntr]
+					sTemp += "_" +StringFromList(pwVal[iEntr] -1, pwOptStr[iEntr])
 					sprintf sFileName, "%s%s", sFPre_HeaderFile, sTemp
 					GetFileFolderInfo/Q/D/Z=2
 					if(V_flag == 0)

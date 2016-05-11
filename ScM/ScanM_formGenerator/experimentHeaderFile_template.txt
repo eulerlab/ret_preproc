@@ -10,6 +10,10 @@ title=species|key=animSpecies|type=popup|options=none;mouse;zebrafish;moose;othe
 title=gender|key=animGender|type=popup|options=unknown;female;male.
 title=date of birth (yyyy-mm-dd)|key=animDOB|type=string.
 title=breeding cage ID|key=animCageID|type=string.
+
+title=unique animal ID|key=animID|type=string.
+title=(format: initials+data+animal index, for example KF20160509_1)|type=comment.
+
 title=eye|key=eye|type=popup|options=unknown;left;right.
 title=comments on animal|key=animRem|type=string.
 
@@ -29,7 +33,7 @@ title=virus-injected|key=isVirusInject|type=checkbox.
 title=injection quality (0-10)|key=virusInjectQ|type=popup|options=n/a;0;1;2;3;4;5;6;7;8;9;10.
 title=injectorix's last name|key=virusInjectName|type=string.
 title=comments on injection|key=virusInjectRem|type=string.
-title=expression quality (0-10)|key=virusExprQ|type=list|options=0;1;2;3;4;5;6;7;8;9;10.
+title=expression quality (0-10)|key=virusExprQ|type=list|options=n/a;0;1;2;3;4;5;6;7;8;9;10.
 title=virus vector|key=virusVect|type=list|options=none;AAV.
 title=virus serotype|key=virusSerotype|type=string.
 title=virus promoter|key=virusProm|type=list|options=unknown;CAG;Syn1.
