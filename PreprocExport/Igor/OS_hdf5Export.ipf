@@ -6,13 +6,18 @@ Function OS_hdf5Export()
 	WAVE/z stack_ave, stack_ave_report, GeoC, Snippets0,SnippetsTimes0,wParamsNum,wParamsStr
 	NewPath targetPath
 	string pathName = "targetPath"
-	HDF5CreateFile/P=$pathName /O /Z fileID as GetDataFolder(0)
+	HDF5CreateFile/P=$pathName /O /Z fileID as GetDataFolder(0)+".h5"
 	WAVE wDataCh0, wDataCh1
 	HDF5SaveData /O /Z wDataCh0, fileID
 	HDF5SaveData /O /Z wDataCh1, fileID
 	HDF5SaveData /O /Z wDataCh2, fileID
-	HDF5SaveData /O /Z wParamsNum, fileID
-	HDF5SaveData /O /Z wParamsStr, fileID
+	HDF5SaveData /O /Z /IGOR=8 wParamsNum, fileID
+	HDF5SaveData /O /Z /IGOR=8 wParamsStr, fileID
+	
+	if (waveexists(stack_ave))
+		HDF5SaveData /O /Z stack_ave, fileID // Mean image across the stack in the data channel 0
+	endif
+	
 	if (waveexists($"Triggervalues")==1)
 		print  "Triggervalues detected, exporting preprocessed data."
 		HDF5SaveData /O /Z /IGOR=8 OS_parameters, fileID
@@ -20,11 +25,8 @@ Function OS_hdf5Export()
 		HDF5SaveData /O /Z Traces0_raw, fileID
 		HDF5SaveData /O /Z Tracetimes0, fileID
 		HDF5SaveData /O /Z Triggertimes, fileID
-		
-		if (waveexists(stack_ave))
-			HDF5SaveData /O /Z stack_ave, fileID // Mean image across the stack in the data channel 0
-		endif
-		
+		HDF5SaveData /O /Z Triggervalues, fileID
+				
 		if (waveexists(GeoC))
 			HDF5SaveData /O /Z GeoC, fileID // Cell positions in the field
 		endif
