@@ -76,6 +76,7 @@ make /o/n=(nF,nRois) OutputTraceTimes = 0
 make /o/n=(nF) OutputTriggerTimes = NaN
 make /o/n=(nF) OutputTriggerTimes_Frame = NaN
 make /o/n=(nF) OutputTriggerValues = NaN
+make /o/n=(nX,nY,nF) OutputPixelTimes = NaN
 variable FrameDuration = nY * LineDuration
 
 // call SARFIA function GeoC to get ROI positions
@@ -139,6 +140,16 @@ endif
 //redimension OutputTriggerValues so it doesn't have trailing NaN's
 redimension /N=(nTriggers) OutputTriggerValues // Andre 2016 04 14
 redimension /N=(nTriggers) OutputTriggerTimes
+
+// Calculate time of scan for each pixel in recording
+for (xx=0;xx<nX;xx+=1)
+	for (yy=0;yy<nY;yy+=1)
+		for (ff=0; ff<nF; ff+=1)
+			// This function will need to be modified for more complex scan paths
+			OutputPixelTimes[xx][yy][ff] = r*nY*2/1000 + p*LineDuration + q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000
+		endfor 
+	endfor
+endfor
 
 // extract traces according to ROIs
 for (rr=0;rr<nRois;rr+=1)
