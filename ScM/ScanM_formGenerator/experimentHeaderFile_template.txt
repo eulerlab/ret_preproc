@@ -6,7 +6,7 @@ title=date (yyyy-mm-dd)|key=date|type=string.
 title=setup ID (1-3)|key=setupID|type=popup|options=unknown;1;2;3.
 
 title=Animal|key=|type=subheader.
-title=species|key=animSpecies|type=popup|options=none;mouse;zebrafish;moose;other.
+title=species|key=animSpecies|type=popup|options=none;mouse;zebrafish;other.
 title=gender|key=animGender|type=popup|options=unknown;female;male.
 title=date of birth (yyyy-mm-dd)|key=animDOB|type=string.
 title=breeding cage ID|key=animCageID|type=string.
@@ -25,7 +25,7 @@ title=injection quality (0-10)|key=brainInjectQ|type=popup|options=n/a;0;1;2;3;4
 title=comments on brain injection|key=brainInjectRem|type=string.
 
 title=Genetics (mouse)|key=|type=subheader.
-title=mouse line|key=genLine|type=popup|options=none;Bl6;HR12_TNXL;Pcp2_Cre;PV_Cre.
+title=mouse line|key=genLine|type=popup|options=none;Bl6;HR2.1_TNXL;Pcp2_Cre;PV_Cre;rd1;rd10;cpfl1;rd1xHR21_TNXL.
 title=comments on background line|key=genBkgLineRem|type=string.
 title=Cre reporter line|key=genLine_Reporter|type=popup|options=none;Ai9;Ai95;Ai38;other.
 title=comments on Cre reporter line|key=genLine_ReporterRem|type=string.
@@ -44,6 +44,9 @@ title=Preparation|key=|type=subheader.
 title=preparation type|key=prep|type=popup|options=none;wholemount;slice;in_vivo.
 title=slice thickness [µm]|key=sliceThickness_um|type=uint32|default=200|range=10;2000.
 title=comments on preparation|key=prepRem|type=string.
+
+title=perfused indicators|key=perfuseDye|type=list|options=none;SR101;Fluorescine;CMAC.
+title=(Include here indicators which are introduced to the tissue through the bath solution)|type=comment.
 title=electroporated|key=isEpored|type=checkbox.
 title=indicator dye(s)|key=eporDye|type=list|options=none;OGB1;XRhod2;SR101.
 title=comments on electroporation|key=eporRem|type=string.
@@ -54,7 +57,7 @@ title=retina orientation [deg]|key=prepWMOrient|type=uint8|default=0|range=0;359
 title=(clockwise, w/dorsal away from experimenter being 0°)|type=comment.
 
 title=Pharmacology|key=|type=subheader.
-title=pharmacological condition|key=pharmDrug|type=list|options=none;carbenoxolone;CPPG;gabazine;gyki;LAP4;kainate;NBQX;CBX;TPMPA;TTX;strychnine.
+title=pharmacological condition|key=pharmDrug|type=list|options=none;carbenoxolone;CPPG;gabazine;gyki;LAP4;kainate;NBQX;CBX;TPMPA;TTX;strychnine;ionomycin;zaprinast;l_cis_diltiazem;calcimycine;calpastatin.
 title=drug concentration(s) [µM]|key=pharmDrugConc_um|type=string.
 title=comment on pharmacology|key=pharmRem|type=string.
 
