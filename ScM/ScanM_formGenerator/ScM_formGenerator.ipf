@@ -560,7 +560,7 @@ function FG_updateRules ()
 	
 	DoWindow/F $(sWinName)
 	ModifyControlList/Z ControlNameList("", ";", "*") disable=0
-	ModifyControlList/Z ControlNameList("", ";", "*_date") disable=2
+	ModifyControlList/Z ControlNameList("", ";", "*_date") disable=0
 	
 	for(iEntr=0; iEntr<DimSize(pwValStr, 0); iEntr+=1)
 		if(pwGUIType[iEntr] == GUIEntry_rule)
