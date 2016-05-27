@@ -5,6 +5,7 @@
 //	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2016
 //	History		: 2010-10-22 	Creation
 //	             2016-02-08	Added XYZScan1, allowing vertical slice scans
+//				  2016-05-23	Added a simple line scan option 	
 //
 // ----------------------------------------------------------------------------------
 #pragma rtGlobals=1		// Use modern global access method.
@@ -126,7 +127,7 @@ function 	XYScan2 (wFuncParams)
 
 	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, iX, iY
 	variable	yInc1, xInc1, yInc2, xInc2, yVLastLine, nPntsLineOffs
-	variable	xVMax, yVMax
+	variable	xVMax, yVMax, noYScan
 	
 	nPntsTotal		= wFuncParams[0]	// = dx*dy
 	dx				= wFuncParams[1]	// including nPntsRetrace
@@ -134,6 +135,7 @@ function 	XYScan2 (wFuncParams)
 	nPntsRetrace	= wFuncParams[3]	// # of points per line used for retrace	
 	nPntsLineOffs	= wFuncParams[4]	// # of points per line before pixels are aquired
 										// (for allowing the scanner to "settle")
+	noYScan        = wFuncParams[5]										
 	dxScan			= dx -nPntsRetrace
 	if(dx > dy)
 		xVMax		= 0.5
@@ -185,6 +187,9 @@ function 	XYScan2 (wFuncParams)
 			endfor
 		endif	
 	endfor	
+	if(noYScan == 1)
+		StimY = 0
+	endif	
 end	
 
 // ---------------------------------------------------------------------------------- 
