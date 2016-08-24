@@ -9,6 +9,8 @@
 //								adapted for multiple frames per z-step (z-stacks)
 //				  2013-03-27	Small changes to improve access by external .ipfs
 //				  2016-01-28	Experimental YZ-scans (w/electrical lens) started
+//				  2016-08-23	Cleaned up a bit, fixed the problem of multiple output
+//								buffers per frame and added frame aspect ratio	  					
 //
 //	Purpose		: Stand-Alone reader/writer for ScanM's SMP files
 //
@@ -100,6 +102,7 @@ constant		ScM_scanMode_XYImage			= 0
 constant		ScM_scanMode_Line				= 1
 constant		ScM_scanMode_Traject			= 2
 constant		ScM_scanMode_XYZImage			= 3
+constant		ScM_scanMode_TrajectArb		= 4
 // ...
 constant		ScM_scanType_timelapsed		= 10
 constant		ScM_scanType_zStack			= 11
@@ -116,7 +119,7 @@ constant		SCMIO_doDebug					= 0
 #endif
 
 // ----------------------------------------------------------------------------------
-constant		SCMIO_preHeaderSize_bytes	= 64
+constant		SCMIO_preHeaderSize_bytes		= 64
 
 Structure 		SMP_preHeaderStruct		// "uint64"
 	char		fileTypeID[8]				// #0
@@ -164,7 +167,7 @@ strconstant	SCMIO_key_OversampFactor				= "uOversampling_Factor"
 //strconstant	SCMIO_key_ZCoord_um					= "fZCoord_um"
 //strconstant	SCMIO_key_ZStep_um						= "fZStep_um"
 
-constant		SCMIO_UserParameterCount				= 29
+constant		SCMIO_UserParameterCount				= 31
 strconstant	SCMIO_key_USER_ScanMode				= "uScanMode"
 strconstant	SCMIO_key_USER_ScanType				= "uScanType"
 strconstant	SCMIO_key_USER_dxPix					= "uFrameWidth"
@@ -194,6 +197,8 @@ strconstant	SCMIO_key_USER_LaserWavelen_nm		= "uLaserWavelength_nm"
 strconstant	SCMIO_key_USER_Objective				= "sObjective"
 strconstant	SCMIO_key_USER_ZLensScaler			= "uZLensScaler"
 strconstant	SCMIO_key_USER_ZLensShifty			= "uZLensShifty"
+strconstant	SCMIO_key_USER_aspectRatioFrame		= "fAspectRatioFrame"
+strconstant	SCMIO_key_USER_stimBufPerFr			= "uStimBufPerFr"
 // ...
 
 strconstant	SCMIO_key_Ch_x_StimBufMapEntr_y		= "uChannel_%d_StimulusBufferMapEntry_#%d"
@@ -339,7 +344,7 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDimLabel 0,15, User_Objective,		wStrParams		
 	wStrParams			= ""				
 
-	Make/O/N=43 $(SCMIO_NumParamWave)	
+	Make/O/N=45 $(SCMIO_NumParamWave)	
 	wave wNumParams	= $(SCMIO_NumParamWave)	
 	SetDimLabel 0, 0, HdrLenInValuePairs,	wNumParams				
 	SetDimLabel 0, 1, HdrLenInBytes,			wNumParams		
@@ -388,6 +393,9 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 
 	SetDimLabel 0,39, User_SetupID,			wNumParams		
 	SetDimLabel 0,40, User_LaserWaveLen_nm,	wNumParams		
+	
+	SetDimLabel 0,43, User_aspectRatioFr,	wNumParams
+	SetDimLabel 0,44, User_stimBufPerFr,		wNumParams
 
 	Make/O/N=(SCMIO_maxStimChans, SCMIO_maxStimBufMapEntries), $(SCMIO_StimBufMapEntrWave)		
 	
@@ -404,11 +412,11 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 	wave		pwSCIOParams 
 	
 	variable	doAddCFDNote, doIntStim, StimCh, TargetCh
-	variable	fileHnd, j, iInCh, dy, m, n, nAICh, iPixBPerCh //, dx
+	variable	fileHnd, j, iInCh, dy, m, n, nAICh, iPixBPerCh
 	variable	nHdr_bytes, nHdr_pairs, iPixB, nPixB, PixBLen, nFr
 	string		sTemp, sSavDF, sDFName, sHeader, sWave
 	struct		SMP_preHeaderStruct	preHdr
-	variable	iAvFr //, pixRetrace, pixOffs
+	variable	iAvFr
 	variable	isFirst, dxRecon, dyRecon, isAvZStack, nFrPerStep
 	variable   dxNew, dyNew, nFrNew
 	variable	dFast, useZForFS, nFastPixRetr, nFastPixOff
@@ -425,10 +433,10 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 	// ...	
 	
 	try
-		// Open data file
+		// Open header file
 		//
 		if((strlen(sFPath) == 0) || strlen(sFName) == 0)
-			sprintf sTemp, "ScanM Pixel Heaser File (*.%s):.%s;", SCMIO_headerFileExtStr, SCMIO_headerFileExtStr
+			sprintf sTemp, "ScanM Pixel Header File (*.%s):.%s;", SCMIO_headerFileExtStr, SCMIO_headerFileExtStr
 			Open/R/D=1/F=(sTemp) fileHnd as (sFPath +"\\" +sFName)
 			AbortOnValue (strlen(S_fileName) == 0), 10
 			fileHnd	= 0			
@@ -458,7 +466,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 
 		// ---------------------------------------------------------------------------
 		// Read binary pre-header and check if beginning of file
-		// indicates correct type
+		// indicates correct type of file
 		//
 		FBinRead/B=0 fileHnd, preHdr
 		sTemp		= ""		
@@ -527,8 +535,25 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				nFastPixRetr	= pwNP[%User_nZPixRetrace]		
 				nFastPixOff	= pwNP[%User_nZPixLineOffs]		
 				break
+				
+			case ScM_scanMode_TrajectArb	:
+				// ##########################				
+				// TODO LR ==>
+				// <==
+				break
 		endswitch		
 		
+	 	// ##########################
+		// 2016-08-24 CHANGED TE ==>
+		// Correct number of pixel buffers, because it is not correctly reported 
+		// by the ScanM.dll if one stimulus buffer contained the data for multiple
+		// frames (i.e. cp.stimBufPerFr != 1)
+		//
+		if(pwNP[%NumberOfPixBufsSet] > 0)
+			pwNP[%NumberOfPixBufsSet]	*= pwNP[%User_stimBufPerFr]
+		endif	
+		// <==
+
 		PixBLen		= Str2Num(StringFromList(0, pwSP[%InChan_PixBufLenList]))		
 		if(pwNP[%NumberOfPixBufsSet] == pwNP[%PixBufCounter])
 			nPixB	= pwNP[%NumberOfPixBufsSet] *(dFast*dy /PixBLen)
@@ -601,11 +626,10 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 						iPixB			+= 1
 					endif
 				endfor
-				// *********************				
-				// *********************
-				// TODO: ACCOUNT FOR SEVERAL BUFFERS PER FRAME
-				// *********************
-				// *********************
+			 	// ##########################
+				// TODO: TE, Account for several buffers per frame?!?
+				// <==
+				
 				iAvFr		+= 1
 				if(iAvFr >= nFrPerStep)
 					iAvFr	= 0
@@ -629,6 +653,20 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 					endif
 				endfor
 			endfor		
+		endif	
+
+		// ##########################
+		// TODO: Read "post header" from pixel data file
+		//
+		// Note that there is the same 64 byte structure as at the beginning of the 
+		// header file (pre-header, see above) pasted to the end of the pixel data
+		// file. It can be used for verification of SMH/SMP file pairs. 
+		// <==
+		
+		// Close pixel data file
+		//
+		if(fileHnd != 0)
+			Close fileHnd
 		endif	
 
 		// Post-process data waves according to user settings
@@ -656,13 +694,12 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				// Reshape AI channel pixel waves
 				//
 				switch(	pwNP[%User_ScanMode])
-				//	case 10							: ?????????????????????????
-					case ScM_scanMode_XYImage 	:
+					case ScM_scanMode_XYImage		:
 						nFr	= (nPixB/nFrPerStep*PixBLen) /(dFast*dy) 
 						Redimension/E=1/N=(dFast, dy, nFr) pwPixData									
 						break			
 							
-					case ScM_scanMode_XYZImage :
+					case ScM_scanMode_XYZImage 	:
 						// Since the z-scan is bi-directional, every second line
 						// needs to be inverted
 						//
@@ -675,8 +712,14 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 						break
 							
 					case ScM_scanMode_Line		:
-					case ScM_scanMode_Traject :
+					case ScM_scanMode_Traject 	:
 						Redimension/E=1/N=(dFast, nPixB *PixBLen /dFast) pwPixData									
+						break
+						
+					case ScM_scanMode_TrajectArb	:
+						// ##########################				
+						// TODO ==>
+						// <==
 						break
 				endswitch		
 
@@ -696,11 +739,15 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 							break
 							
 						case ScM_scanMode_XYZImage	:						
-							// *********************				
-							// *********************
-							// TODO
-							// *********************
-							// *********************
+							// ##########################				
+							// TODO ==>
+							// <==
+							break
+							
+						case ScM_scanMode_TrajectArb	:
+							// ##########################				
+							// TODO ==>
+							// <==
 							break
 					endswitch		
 				endif	
@@ -833,9 +880,6 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 			case 7:
  				writeToLog("", "Pixel size not yet implemented", doLog, -1)
  				break
-//			case 8:
-// 				writeToLog("", "Incomplete pixel buffers in file?!", doLog, -1)
-// 				break
 			case 9:
  				writeToLog("", "XYZ scan w/o z being fast axis not implemented", doLog, -1)
  				break
@@ -848,11 +892,8 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 		sDFName	= ""
 	endtry	
 	
-	// Close file and clean up
+	// Clean up
 	//
-	if(fileHnd != 0)
-		Close fileHnd
-	endif	
 	KillWaves/Z wHdr
 	SetDataFolder $(sSavDF)
 	
@@ -1118,6 +1159,9 @@ static function	ScMIO_HdrStr2Params (s)
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_ZLensShifty))
 					pwNP[%User_ZLensShifty]			= str2num(sVal)				
 					nEDone	+= 1
+				elseif(stringmatch(sTemp,	SCMIO_key_USER_stimBufPerFr))
+					pwNP[%User_stimBufPerFr]			= str2num(sVal)				
+					nEDone	+= 1
 				// <-- 
 				elseif(stringmatch(sTemp,	SCMIO_key_Unused0))
 					nEDone	+= 1
@@ -1147,6 +1191,8 @@ static function	ScMIO_HdrStr2Params (s)
 				elseif(stringmatch(sTemp,	SCMIO_key_OversampFactor))
 					pwNP[%OversampFactor]			= str2num(sVal)				
 					nEDone	+= 1
+					
+				// --> USER	
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_coordX))
 					pwNP[%XCoord_um]				= str2num(sVal)				
 					nEDone	+= 1
@@ -1166,12 +1212,16 @@ static function	ScMIO_HdrStr2Params (s)
 					pwNP[%Angle_deg]				= str2num(sVal)				
 					nEDone	+= 1
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_offsetX_V))
-					pwNP[%ser_XOffset_V]			= str2num(sVal)				
+					pwNP[%User_XOffset_V]			= str2num(sVal)				
 					nEDone	+= 1
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_offsetY_V))
-					pwNP[%ser_YOffset_V]			= str2num(sVal)				
+					pwNP[%User_YOffset_V]			= str2num(sVal)				
 					nEDone	+= 1
-				endif					
+				elseif(stringmatch(sTemp,	SCMIO_key_USER_aspectRatioFrame))
+					pwNP[%User_aspectRatioFr]		= str2num(sVal)		
+					nEDone	+= 1
+				endif				
+				// <--	
 				break
 				
 			default			:

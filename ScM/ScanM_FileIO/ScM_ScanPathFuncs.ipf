@@ -6,13 +6,21 @@
 //	History		: 2010-10-22 	Creation
 //	             2016-02-08	Added XYZScan1, allowing vertical slice scans
 //				  2016-05-23	Added a simple line scan option 	
+//				  2016-05-31	Started adding arbitrary trajectories
+//				  2016-08-23	Cleaned up a bit, fixed the problem of multiple output
+//								buffers per frame and added frame aspect ratio	  					
 //
 // ----------------------------------------------------------------------------------
 #pragma rtGlobals=1		// Use modern global access method.
 
 #ifndef ScM_ipf_present
-constant 	ScM_TTLlow		= 0
-constant 	ScM_TTLhigh	= 5	
+constant 	ScM_TTLlow			= 0
+constant 	ScM_TTLhigh		= 5	
+
+constant	SCM_indexScannerX	= 0        
+constant	SCM_indexScannerY	= 1        
+constant	SCM_indexLaserBlk	= 2        
+constant	SCM_indexLensZ		= 3        
 #endif
 
 // ----------------------------------------------------------------------------------
@@ -127,7 +135,7 @@ function 	XYScan2 (wFuncParams)
 
 	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, iX, iY
 	variable	yInc1, xInc1, yInc2, xInc2, yVLastLine, nPntsLineOffs
-	variable	xVMax, yVMax, noYScan
+	variable	xVMax, yVMax, noYScan, aspectRatioFr
 	
 	nPntsTotal		= wFuncParams[0]	// = dx*dy
 	dx				= wFuncParams[1]	// including nPntsRetrace
@@ -135,13 +143,15 @@ function 	XYScan2 (wFuncParams)
 	nPntsRetrace	= wFuncParams[3]	// # of points per line used for retrace	
 	nPntsLineOffs	= wFuncParams[4]	// # of points per line before pixels are aquired
 										// (for allowing the scanner to "settle")
-	noYScan        = wFuncParams[5]										
+	noYScan       	= wFuncParams[5]	// if 1 deactivates y scanner
+	aspectRatioFr	= wFuncParams[6]	// aspect ratio of frame		
+								
 	dxScan			= dx -nPntsRetrace
 	if(dx > dy)
 		xVMax		= 0.5
-		yVMax		= dy/dxScan /2
+		yVMax		= dy/(dxScan *aspectRatioFr) /2
 	else	 
-		xVMax		= dxScan/dy /2
+		xVMax		= (dxScan *aspectRatioFr)/dy /2
 		yVMax		= 0.5
 	endif	
 	xInc1			= 2*xVMax /(nPntsRetrace +1)
@@ -149,7 +159,6 @@ function 	XYScan2 (wFuncParams)
 	
 	yInc2			= 2*yVMax /((nPntsRetrace +1) *2)
 	xInc2			= xInc1 /2
-//	xInc2			= 2*xVMax /((nPntsRetrace -1)	*2)
 	
 	Make/O/N=(nPntsTotal) StimX, StimY, StimPC
 	StimPC			= ScM_TTLlow	
@@ -198,7 +207,7 @@ function 	XYScan3 (wFuncParams)
 
 	variable	dx, dxScan, dy, nPntsTotal, nPntsRetrace, iX, iY, iB, iP, nB
 	variable	yInc1, xInc1, yInc2, xInc2, yVLastLine, nPntsLineOffs
-	variable	xVMax, yVMax, nStimPerFr
+	variable	xVMax, yVMax, nStimPerFr, noYScan, aspectRatioFr
 	
 	nPntsTotal		= wFuncParams[0]	// = dx*dy *nStimPerFr
 	dx				= wFuncParams[1]	// including nPntsRetrace
@@ -206,16 +215,19 @@ function 	XYScan3 (wFuncParams)
 	nPntsRetrace	= wFuncParams[3]	// # of points per line used for retrace	
 	nPntsLineOffs	= wFuncParams[4]	// # of points per line before pixels are aquired
 										// (for allowing the scanner to "settle")
-	nStimPerFr		= wFuncParams[5]	// # of stimulus buffers per frame
+	noYScan     	= wFuncParams[5]	// if 1 deactivates y scanner
+	aspectRatioFr	= wFuncParams[6]	// aspect ratio of frame		
+	nStimPerFr		= wFuncParams[7]	// # of stimulus buffers per frame
 										
 	dxScan			= dx -nPntsRetrace
 	if(dx > dy)
 		xVMax		= 0.5
-		yVMax		= dy/dxScan /2
+		yVMax		= dy/(dxScan *aspectRatioFr) /2
 	else	 
-		xVMax		= dxScan/dy /2
+		xVMax		= (dxScan *aspectRatioFr)/dy /2
 		yVMax		= 0.5
 	endif	
+	
 	xInc1			= 2*xVMax /(nPntsRetrace +1)
 	yInc1			= 2*yVMax /(dy-1) /(nPntsRetrace +1)
 	
@@ -266,6 +278,9 @@ function 	XYScan3 (wFuncParams)
 		StimY[iP, iP+nB-1]  		= StimY[p-iP]
 		StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
 	endfor
+	if(noYScan == 1)
+		StimY = 0
+	endif	
 end	
 
 // ---------------------------------------------------------------------------------- 
@@ -454,6 +469,8 @@ function 	XYZScan1 (wFuncParams)
 	endif	
 end	
 
+
+
 // ---------------------------------------------------------------------------------- 
 // ##########################		
 // 2016-02-11 ADDED, TE ==>
@@ -581,6 +598,120 @@ function 	despiral (iAICh, dxRast, dyRast, isDebug, doSmartfillAvg)
 		KillWaves/Z	 pwImg_os, pwImg_avg
 	endif
 	KillWaves/Z pwStimX, pwStimY
+end
+
+// ---------------------------------------------------------------------------------- 
+// Diverse trajectory scans
+// ---------------------------------------------------------------------------------- 
+function radialScan(wFuncParams)
+	wave		wFuncParams
+
+	variable	numberOfPoints, flyback, MaxAO_V, dxFrDecoded, dyFrDecoded
+	variable   nOffsets, stepSize, coilFactor, earlyRetrace, pauseRetrace
+	variable 	totalSize, normFactor, angle, away, itx
+	
+	numberOfPoints		= wFuncParams[0]
+	flyback        	= wFuncParams[1]
+	totalsize      	= wFuncParams[2]
+	MaxAO_V				= wFuncParams[3]	
+	dxFrDecoded			= wFuncParams[4]	
+	dyFrDecoded			= wFuncParams[5] 
+	nOffsets	    	= wFuncParams[6]	
+	stepSize			= wFuncParams[7]	
+	coilFactor			= wFuncParams[8]	
+	earlyRetrace		= wFuncParams[9]	
+	pauseRetrace		= wFuncParams[10] 
+ 	numberOfPoints	+= flyback
+
+	make /o /n=(NumberofPoints) 	StimX = 0
+	make /o /n=(NumberofPoints) 	StimY = 0
+	make /o /n=(NumberofPoints) 	StimPC = ScM_TTLhigh
+	
+	variable awayStep = 1 /(coilFactor *2 *pi)
+	variable theta = stepSize /coilFactor
+	variable delta
+	
+	itx = 0
+	do
+		away = awayStep *theta
+		StimX[itx] = cos(theta) *away
+		StimY[itx] = sin(theta) *away    		
+		
+		delta = (-2 *away +sqrt(4 *away *away +8 *awayStep *stepSize))/(2*awayStep)
+		theta += delta //combine with delta?
+		itx +=1
+	    if (itx > NumberOfPoints -flyback -earlyRetrace)
+	    	StimPC[itx] = ScM_TTLlow
+	    endif
+	while (itx < NumberOfPoints)
+	   
+	variable x_max = wavemax(StimX)
+	variable y_max = wavemax(StimY)
+	normFactor = Totalsize/(2*max(x_max,y_max))
+	StimX	*=normFactor
+	StimY	*=normFactor
+	
+	for (itx=0; itx<flyback; itx+=1)
+		if (itx > pauseRetrace)
+			//angle = (itx-pauseRetrace)/flyback*pi/2
+			angle = (itx-pauseRetrace)/(flyback-pauseRetrace)*pi/2
+			StimX[Numberofpoints-itx]	*= sin(angle)
+			StimY[Numberofpoints-itx]	*= sin(angle)
+		else
+			StimX[Numberofpoints-itx]	= 0
+			StimY[Numberofpoints-itx]	= 0
+		endif
+		
+		StimPC[Numberofpoints-itx] = ScM_TTLlow
+	endfor
+	
+	// Build intermediate waves for rotation 
+	make /o /n=(NumberofPoints) pix_x,pix_y,pix_r,pix_theta
+	wave pwStimBufData = $("wStimBufData")
+	for(itx=0; itx<nOffsets; itx+=1)
+		// Convert to polar coordinates; offset; return to cartesian
+		pix_r = sqrt(StimX^2 + StimY^2)
+		pix_theta = atan2(StimY,StimX) + 2*pi*mod(itx,nOffsets)/nOffsets
+		pix_x = pix_r*cos(pix_theta)
+		pix_y = pix_r*sin(pix_theta)
+		
+		pwStimBufData[SCM_indexScannerX][itx*NumberofPoints,(itx+1)*NumberofPoints-1]	= pix_x[q -itx*NumberofPoints]
+		pwStimBufData[SCM_indexScannerY][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = pix_y[q -itx*NumberofPoints]
+		pwStimBufData[SCM_indexLaserBlk][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = StimPC[q -itx*NumberofPoints]*maxAO_V			
+	endfor
+	
+	// Build frequency matrix for scan normalisation	
+	make/o/n=(nOffsets*NumberofPoints,1) countVector = 1
+	make/o/n=(dxFrDecoded,dyFrDecoded) countMatrix = 0
+	if (dimsize(countVector,0) == dimsize(pwStimBufData,1))
+		ScanDecoder(countVector,pwStimBufData,countMatrix)
+	endif
+	killWaves/z countVector
+end	
+
+function radialScan_decode(displayMatrix,inputData,display_x,display_y,nAICh,iAICh)
+	wave displayMatrix,inputData
+	variable display_x,display_y,nAICh,iAICh
+
+	wave countMatrix = $("countMatrix")
+	wave wStimBufData = $("wStimBufData")
+	variable dataLength = dimsize(inputData,0)/nAICh
+	variable start = iAICh*dataLength
+	variable stop = (iAICh+1)*dataLength-1
+	
+	//variable timerRefNum,microSeconds
+	//timerRefNum = startMSTimer
+	
+	displayMatrix = 0
+	Redimension/n=(display_x,display_y) displayMatrix
+	Duplicate/o/r=(start,stop) inputData,frameData
+	Redimension/n=(stop-start+1,1) frameData
+	ScanDecoder(frameData,wStimBufData,displayMatrix)
+	MatrixOp/o displayMatrix = displayMatrix / countMatrix
+	
+	//microSeconds = stopMSTimer(timerRefNum)
+	//Print microSeconds/1000
+	
 end
 
 // ---------------------------------------------------------------------------------- 	
