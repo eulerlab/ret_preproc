@@ -10,7 +10,8 @@
 //				  2013-03-27	Small changes to improve access by external .ipfs
 //				  2016-01-28	Experimental YZ-scans (w/electrical lens) started
 //				  2016-08-23	Cleaned up a bit, fixed the problem of multiple output
-//								buffers per frame and added frame aspect ratio	  					
+//								buffers per frame and added frame aspect ratio	  		
+//				  2016-08-26	Fixed stupid bug				
 //
 //	Purpose		: Stand-Alone reader/writer for ScanM's SMP files
 //
@@ -62,7 +63,7 @@ constant		SCMIO_doSmartfillTrajAvg		= 1
 
 // ----------------------------------------------------------------------------------
 #include	"ScM_ScanPathFuncs"
-#define 	ScM_FileIO_isDebug
+//#define 	ScM_FileIO_isDebug
 
 // ----------------------------------------------------------------------------------
 // Global definitions
@@ -549,7 +550,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 		// by the ScanM.dll if one stimulus buffer contained the data for multiple
 		// frames (i.e. cp.stimBufPerFr != 1)
 		//
-		if(pwNP[%NumberOfPixBufsSet] > 0)
+		if(pwNP[%User_stimBufPerFr] > 0)
 			pwNP[%NumberOfPixBufsSet]	*= pwNP[%User_stimBufPerFr]
 		endif	
 		// <==
