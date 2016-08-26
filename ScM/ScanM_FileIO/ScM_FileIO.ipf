@@ -552,6 +552,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 		//
 		if(pwNP[%User_stimBufPerFr] > 0)
 			pwNP[%NumberOfPixBufsSet]	*= pwNP[%User_stimBufPerFr]
+			pwNP[%PixBufCounter]		*= pwNP[%User_stimBufPerFr]
 		endif	
 		// <==
 
