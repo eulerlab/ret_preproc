@@ -8,4 +8,8 @@
 
 3. Create in the directory ``...\Igor Pro 6 User Files\Igor Procedures`` a shortcut to ``...\Igor Pro 6 User Files\User Procedures\ScanM\ScM_FileIO.ipf``
 
+4. Copy the file ScanDecoder.xop to ``...\Igor Pro 6 User Files\Igor Extensions``
+
 When IgorPRO is next started, a new menu entry ``ScanM`` should appear.
+
+If an error related to the ScanDecoder function occurs on startup, check that ScanDecoder has been copied to the correct folder.
