@@ -26,7 +26,7 @@ def importPreprocessedData():
     
     # Convert OS_Parameters to dataframe with parameter labels
     parameterLabels = {str(attribute[0]).replace('b','') for attribute in importedData['OS_Parameters'].attrs['IGORWaveDimensionLabels'][1:]}
-    preprocessedData['OS_Parameters'] = pd.DataFrame(preprocessedData['OS_Parameters'].astype(int), index=parameterLabels,columns=['Value'])
+    preprocessedData['OS_Parameters'] = pd.DataFrame(preprocessedData['OS_Parameters'].astype(float), index=parameterLabels,columns=['Value'])
     
     #Convert Traces0_raw and Traces0_znorm to pandas dataframe with numbered ROIs
     preprocessedData = labelledDataframe(preprocessedData,['Traces0_znorm','Traces0_raw'])
