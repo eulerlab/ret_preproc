@@ -153,9 +153,6 @@ for folder in fieldFolders:
         columns.append("on_off")
         toframe.append(data["ooi"].values[0][0])
         
-        
-        
-        
         data = pd.read_hdf(bgField[0],cell)
         data = data.transpose()
         
@@ -164,6 +161,13 @@ for folder in fieldFolders:
         
         columns.append("color_off_index")
         toframe.append(data["colorOffInd"].values[0][0])
+        
+        columns.append("location x")
+        toframe.append(data["XCoord_um"].values[0][0])
+        
+        columns.append("location y")
+        toframe.append(data["YCoord_um"].values[0][0])
+        
         
         majorTable =majorTable.append(pd.DataFrame(data=[toframe],
                                                columns=columns,
