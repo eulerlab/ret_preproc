@@ -38,8 +38,8 @@ natureData = matlab.loadmat(natureFile)
 dbPath = "Z:\\Data\\Chagas\\"
 
 
-folderName = "20170119\\"
-subFolder = "1\\"
+folderName = "20170223\\"
+subFolder = "2\\"
 
 
 
@@ -62,12 +62,12 @@ noiseCount=0
 #turn analysis of responses to certain stimulus on/off.
 noiseFlag=True
 cnoiseFlag=True
-bgFlag=True
-chirpFlag=True
-dsFlag=True
-darkdsFlag=True
-spotFlag=True
-flickerFlag=True
+bgFlag=False
+chirpFlag=False
+dsFlag=False
+darkdsFlag=False
+spotFlag=False
+flickerFlag=False
 
 coorFlag=1
 
@@ -127,12 +127,13 @@ for filePrefix in fileList:
         fieldx = fieldOut["x"].dropna().values[0]
         fieldy = fieldOut["y"].dropna().values[0]
         
-        fieldx=pd.Series(fieldx,index=["0"],name=("x "+fieldOut.index[0],sufix))
-        fieldy=pd.Series(fieldy,index=["1"],name=("y "+fieldOut.index[1],sufix))
-        
     else:
         print("something wrong with coordinate file headers")
-            
+        filedx=np.nan
+        fieldy=np.nan
+    
+    fieldx=pd.Series(fieldx,index=["0"],name=("x "+fieldOut.index[0],sufix))
+    fieldy=pd.Series(fieldy,index=["1"],name=("y "+fieldOut.index[1],sufix))
     imported, data = ipd.importPreprocessedData(filePath,fileName)
     #close file
     imported.close()
@@ -323,13 +324,13 @@ for filePrefix in fileList:
                         
                     rawG=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
                                        stimMatrix=noise[:,:,:,1],responseTrace=velTrace,
-                                       timeDelay=j)#,gaussianFilter=gauss)
+                                       timeDelay=j,gaussianFilter=gauss)
                         
 #                    rawG = rawG/np.std(rawG)
                         
                     rawB=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
                                        stimMatrix=noise[:,:,:,2],responseTrace=velTrace,
-                                       timeDelay=j)#,gaussianFilter=gauss)
+                                       timeDelay=j,gaussianFilter=gauss)
                         
                     avgG = np.mean(rawG,axis=0)
 
@@ -345,9 +346,9 @@ for filePrefix in fileList:
                     tempB ="avg_blue_RF_"+sign+str(abs(j))
 
                         
-                    allTimesG.append(avgG)
+                    allTimesG.append(avgG)#/np.std(avgG))
 #                    allAvgG.append(avgG)
-                    allTimesB.append(avgB)
+                    allTimesB.append(avgB)#/np.std(avgB))
 #                    avgG=pd.DataFrame(avgG)
 #                    avgB=pd.DataFrame(avgB)
 
@@ -364,9 +365,10 @@ for filePrefix in fileList:
                 
                     plt.figure()
                     temp =np.dstack((np.zeros(np.shape(allTimesG[0])),allTimesG[nd],allTimesG[nd])) 
-                    plt.imshow(allTimesG[nd],
-                           interpolation="None",#cmap="gray",
-                           vmax=np.max(temp),vmin=np.min(temp),origin="upper")
+                    plt.imshow(allTimesG[nd]/np.std(allTimesG[nd]),
+                           interpolation="None",cmap="gray",
+                           vmax=np.max(allTimesG),
+                           vmin=np.min(allTimesG),origin="upper")
                 
                     gCon = list()
                     bCon = list()
