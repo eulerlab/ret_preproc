@@ -1,9 +1,5 @@
 
-# coding: utf-8
-
-# In[95]:
-
-get_ipython().magic(u'matplotlib inline')
+#get_ipython().magic(u'matplotlib inline')
 import h5py
 import numpy as np
 import os
@@ -12,10 +8,10 @@ import seaborn as sns
 
 # Import differences between remote iPython scripts and local desktop scripts. Marked with ##REMOTE tags
 
-def importPreprocessedData():
+def importPreprocessedData(filePath,fileName):
     # Import preprocessedData.h5 from specified directory, store in dictionary
-    os.chdir('/notebooks/Data/Rogerson/20151027/3/Imaging') ##REMOTE - will differ for local and remote execution
-    importedData = h5py.File('preprocessedData2.h5', "r")
+#    os.chdir('/notebooks/Data/Rogerson/20151027/3/Imaging') ##REMOTE - will differ for local and remote execution
+    importedData = h5py.File(filePath+"//"+fileName, "r")
     preprocessedData = {wave:np.asarray(np.transpose(importedData[wave])) for wave in list(importedData.keys())}
     
     # Set minimimum ROI index to zero
@@ -31,7 +27,9 @@ def importPreprocessedData():
 
     
     #Convert Traces0_raw and Traces0_znorm to pandas dataframe with numbered ROIs
-    preprocessedData = labelledDataframe(preprocessedData,['Traces0_znorm','Traces0_raw'])
+#    preprocessedData = labelledDataframe(preprocessedData,['Traces0_znorm','Traces0_raw'])
+    #seems znorm are not exported anymore
+    preprocessedData = labelledDataframe(preprocessedData,['Traces0_raw'])
     
     # Combine triggerTimes and triggerValues in single pandas dataframe
     preprocessedData['Triggers'] = pd.DataFrame(np.transpose([preprocessedData.pop('Triggertimes', None),preprocessedData.pop('Triggervalues', None)]),columns=['Trigger Time','Trigger Value'])
@@ -43,7 +41,7 @@ def importPreprocessedData():
 
 def removeNanValues(preprocessedData,entries):
     for entry in entries:
-        preprocessedData[entry] = (preprocessedData[entry][-np.isnan(preprocessedData[entry])])
+        preprocessedData[entry] = (preprocessedData[entry][~np.isnan(preprocessedData[entry])])
     return preprocessedData
 
 def labelledDataframe(preprocessedData,entries):
