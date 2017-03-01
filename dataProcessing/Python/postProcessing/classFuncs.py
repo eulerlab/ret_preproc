@@ -642,17 +642,22 @@ def get_vel_trace(trace):
                     
     #get first derivative
     velTrace=np.diff(velTrace,n=1,axis=0)
-    #convolve vel trace with calcium signals
-    velTrace = np.multiply(trace[1:],velTrace)
+#    #convolve vel trace with calcium signals
+#    velTrace = np.multiply(trace[1:],velTrace)
     #get normalized trace [0 to 1] to calculate peak
-    normTrace = velTrace/max(abs(velTrace))
+    normTrace = velTrace[:]/max(abs(velTrace))
     #calculate SD
-    sd = np.median(abs(normTrace),axis=0)/0.6745
+    sd = np.median(abs(velTrace),axis=0)/0.6745
     return velTrace,normTrace,sd
 
 def get_peaks_above_sd(trace,sd,onlypos=1):
+    #pk.indexes only finds thresholds between 0 and 1, therefore we
+    #divide the whole array by sd subtract 0.5 so that sd is 0.5
+    trace = (trace/sd)-0.5
+    sd=(sd/sd)-0.5
+    
     #get indexes of peaks above 1 SD (findpeaks in matlab)
-    indexes=pk.indexes(y=abs(trace),thres=float(sd),min_dist=1)
+    indexes=pk.indexes(y=trace,thres=float(sd),min_dist=1)
     if onlypos==1:
         #get only the positive spikes
         indexes = indexes[trace[indexes]>sd]
@@ -1171,8 +1176,10 @@ def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
     and at the optic disk (OD). Use this information to calculate the relative distance from
     the edges to the optic disk.
     inputs: 
-        rawPath, optional input. Specificies from which directory to start the user dialogue
-        pattern - Input required to establish how the retina was positioned on the chamber. It
+        rawPath: optional input. Specificies from which directory to start the user dialogue.
+        fileList: specifies the filenames containing the recordings retina edges and OD.
+                    (if not present, a dialogue will pop up so the user can choose it)
+        pattern: - Input required to establish how the retina was positioned on the chamber. It
         should contain a dictionary with the following keys: "+x","-x","+y","-y" and the correspondent
         values (as strings) defined by the user.
     returns:
