@@ -324,13 +324,13 @@ for filePrefix in fileList:
                         sign="pos"
                         
                     rawG=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
-                                       stimMatrix=noise[:,:,:,1],responseTrace=velTrace,
+                                       stimMatrix=noise[:,:,:,1],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
 #                    rawG = rawG/np.std(rawG)
                         
                     rawB=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
-                                       stimMatrix=noise[:,:,:,2],responseTrace=velTrace,
+                                       stimMatrix=noise[:,:,:,2],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
                     avgG = np.mean(rawG,axis=0)                  
