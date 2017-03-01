@@ -22,13 +22,13 @@ import scipy.signal as signal
 from configparser import ConfigParser
 import scipy.io.matlab as matlab
 
-os.chdir("E:\\Dropbox\\code\\repositories\\retina_analysis\\PreprocExport")
+os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\load_after_igor_processing")
 import ImportPreprocessedData as ipd
 
-#os.chdir("E:\\Dropbox\\code\\repositories\\retina_analysis\\")
+os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\postProcessing")
 import classFuncs as cfs
 
-os.chdir("E:\\github\\processing_pypeline\\")
+os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\read_scanm_python")
 import readScanM as rs
 
 #load data from nature paper
@@ -76,14 +76,17 @@ for filePrefix in fileList:
     splitFile = filePrefix.split("\\")
 
     fileName = splitFile[-1]
-    #get stimulus used from filename:
-    #reverse file name and find the first "_"
-    index = fileName[::-1].index("_")
-    #now subtract the full lenght of the string to get the index
-    # in the non-reversed string
-    index = len(fileName)-index
-    sufix = fileName[index:fileName.index(".")]
-
+#    #get stimulus used from filename:
+#    #reverse file name and find the first "_"
+#    index = fileName[::-1].index("_")
+#    #now subtract the full lenght of the string to get the index
+#    # in the non-reversed string
+#    index = len(fileName)-index
+#    sufix = fileName[index:fileName.index(".")]
+     sufix = fileName.split("_")
+     sufix = sufix[-1]
+     sufix = sufix.split(".")
+     sufix = sufix[0]
 #    if "noise" in filePrefix or "cnoise" in filePrefix:
 #        storeName2 = filePrefix[:]
 #        storeName2.replace("Data","user")
@@ -97,6 +100,7 @@ for filePrefix in fileList:
     rawFile = filePrefix.replace("\\Pre","\\Raw")
     #replace "h5" with "smh"
     rawFile = rawFile.replace(".h5",".smh")
+    rawFile = rawFile.replace("SMP_","")
     #grab the string up to the raw folder
     rawFolder = rawFile[0:rawFile.index("Raw")+4]
     
@@ -110,11 +114,10 @@ for filePrefix in fileList:
     recList = cfs.get_folder_tree(rawFolder)
     #keep only the header files
     recList = [s for s in recList if ".smh" in s]
-    #keep only the files related to one field
-    recList = [s for s in recList if fileName[0:2] in s]
+    
     if coorFlag==1:
         #grab only the ones related to coordinate recording (edges + optic disk)
-        coorList = [s for s in recList if fileName[0:index] not in s]
+        coorList = [s for s in recList if "loc" in s]
         coorFlag = 0
         
 
@@ -129,11 +132,12 @@ for filePrefix in fileList:
         
     else:
         print("something wrong with coordinate file headers")
-        filedx=np.nan
+        fieldx=np.nan
         fieldy=np.nan
     
     fieldx=pd.Series(fieldx,index=["0"],name=("x "+fieldOut.index[0],sufix))
     fieldy=pd.Series(fieldy,index=["1"],name=("y "+fieldOut.index[1],sufix))
+    
     imported, data = ipd.importPreprocessedData(filePath,fileName)
     #close file
     imported.close()
@@ -305,7 +309,7 @@ for filePrefix in fileList:
                               
                 velTrace,normTrace,sd = cfs.get_vel_trace(trace)
                 
-                indexes = cfs.get_peaks_above_sd(trace = normTrace,sd = sd,onlypos=1)
+                indexes = cfs.get_peaks_above_sd(trace = velTrace,sd = sd,onlypos=1)
                     
                 #create 5x5 gaussian window with 1 as standard deviation
                 gauss = cfs.create_2d_gaussian_window(5,5,1)
@@ -323,24 +327,23 @@ for filePrefix in fileList:
                         sign="pos"
                         
                     rawG=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
-                                       stimMatrix=noise[:,:,:,1],responseTrace=velTrace,
+                                       stimMatrix=noise[:,:,:,1],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
 #                    rawG = rawG/np.std(rawG)
                         
                     rawB=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
-                                       stimMatrix=noise[:,:,:,2],responseTrace=velTrace,
+                                       stimMatrix=noise[:,:,:,2],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
-                    avgG = np.mean(rawG,axis=0)
+                    avgG = np.mean(rawG,axis=0)                  
+                    avgB = np.mean(rawB,axis=0)
 
+#                    avgB = signal.convolve2d(in1=np.mean(rawB,axis=0),in2=gauss,
+#                                         mode="same",boundary='symm')
 #                    avgG = signal.convolve2d(in1=np.mean(rawG,axis=0),in2=gauss,
 #                                         mode="same",boundary='symm')
                     
-                    
-                    avgB = np.mean(rawB,axis=0)
-#                    avgB = signal.convolve2d(in1=np.mean(rawB,axis=0),in2=gauss,
-#                                         mode="same",boundary='symm')
                     
                     tempG ="avg_green_RF_"+sign+str(abs(j))
                     tempB ="avg_blue_RF_"+sign+str(abs(j))
@@ -359,32 +362,34 @@ for filePrefix in fileList:
 
                                                      
                                                      
-                allTimesG = (allTimesG/np.max(allTimesG))*255
-                allTimesB = (allTimesB/np.max(allTimesB))*255
-                for nd in range(0,9):
+#                allTimesG = (allTimesG/np.max(allTimesG))*255
+#                allTimesB = (allTimesB/np.max(allTimesB))*255
+
+#                fh=plt.figure()
+#                for frame in rawG:
+#                
+#                    plt.figure()
+#                    temp =np.dstack((np.zeros(np.shape(allTimesG[0])),allTimesG[nd],allTimesG[nd])) 
+#                    plt.imshow(allTimesG[nd]/np.std(allTimesG[nd]),
+#                           interpolation="None",cmap="gray",
+#                           vmax=np.max(allTimesG),
+#                           vmin=np.min(allTimesG),origin="upper")
                 
-                    plt.figure()
-                    temp =np.dstack((np.zeros(np.shape(allTimesG[0])),allTimesG[nd],allTimesG[nd])) 
-                    plt.imshow(allTimesG[nd]/np.std(allTimesG[nd]),
-                           interpolation="None",cmap="gray",
-                           vmax=np.max(allTimesG),
-                           vmin=np.min(allTimesG),origin="upper")
-                
-                    gCon = list()
-                    bCon = list()
-                    
-                    for i in range(len(allTimesG)):
-                        gCon.append(signal.convolve2d(in1=allTimesG[i],
-                                                      in2=gauss,
-                                                      mode="same",boundary='symm'))
-                        bCon.append(signal.convolve2d(in1=allTimesB[i],
-                                                      in2=gauss,
-                                                      mode="same",boundary='symm'))
-                gCon = gCon-np.min(gCon)
-                gCon = gCon/np.max(gCon)
-                
-                bCon = bCon-np.min(bCon)
-                bCon = bCon/np.max(bCon)
+#                    gCon = list()
+#                    bCon = list()
+#                    
+#                    for i in range(len(allTimesG)):
+#                        gCon.append(signal.convolve2d(in1=allTimesG[i],
+#                                                      in2=gauss,
+#                                                      mode="same",boundary='symm'))
+#                        bCon.append(signal.convolve2d(in1=allTimesB[i],
+#                                                      in2=gauss,
+#                                                      mode="same",boundary='symm'))
+#                gCon = gCon-np.min(gCon)
+#                gCon = gCon/np.max(gCon)
+#                
+#                bCon = bCon-np.min(bCon)
+#                bCon = bCon/np.max(bCon)
                 
 #                k=1
 #                plt.matshow(gCon[k],cmap="gray",vmax=1,vmin=0)
@@ -428,6 +433,9 @@ for filePrefix in fileList:
                         
                 allData = allData.append(idxMaxG)
                 allData = allData.append(idxMaxB)
+                allData = allData.append(idxMinG)
+                allData = allData.append(idxMinB)
+                
             #end if suifx is noise
             hdStore2.close()
             
