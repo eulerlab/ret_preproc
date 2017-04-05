@@ -7,19 +7,21 @@ Created on Tue May 10 11:03:55 2016
 
 #script to assign data collected to a previously existing cluster
 #use the next two lines to add reload to ipython. 
+#%% 
 %load_ext autoreload
-
+##
 %autoreload 2  
-
+#%% 
 #import copy
 import pandas as pd
 import os
 import numpy as np
 #import h5py
-import re
+#import re
 import matplotlib.pyplot as plt
-import scipy.signal as signal
-from configparser import ConfigParser
+import pycircstat as circ
+#import scipy.signal as signal
+#from configparser import ConfigParser
 import scipy.io.matlab as matlab
 
 os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\load_after_igor_processing")
@@ -27,317 +29,426 @@ import ImportPreprocessedData as ipd
 
 os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\postProcessing")
 import classFuncs as cfs
-
-os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\read_scanm_python")
-import readScanM as rs
+#%% 
+#os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\read_scanm_python")
+#import readScanM as rsm
 
 #load data from nature paper
 natureFile = "Z:\\User\\Chagas\\nature2016_RGCs\\2016_clusters.mat"
+#natureFile = "E:\\2016_nature_paper\\2016_clusters.mat"
 natureData = matlab.loadmat(natureFile)
 
 dbPath = "Z:\\Data\\Chagas\\"
 
+#          
 
-folderName = "20170223\\"
-subFolder = "2\\"
+experimentList=[#"20161102\\1\\","20170119\\1\\",
+                #"20160607\\1\\","20160914\\1\\",
+                #"20160919\\1\\","20160921\\1\\",
+                #"20160927\\1\\","20161005\\2\\",
+                #"20161017\\1\\","20161011\\1\\",
+                #"20170217\\1\\","20170221\\1\\",
+                #"20170223\\2\\","20170223\\1\\",                
+                #"20161026\\1\\","20161102\\1\\",
+                "20170119\\1\\", 
+                 ]
+                #
+#folderName = "20170223\\"
+#subFolder = "1\\"
+#"20161026\\2\\",
 
 
 
-filePath = dbPath+folderName+subFolder+"Pre\\"
-headerPath = dbPath+folderName+subFolder+"Raw\\"
+#headerPath = dbPath+folderName+subFolder+"Raw\\"
 
 #not to comprimise the folder/file structure of the DB,
 #use another location on the server to save the data
 storePath = "Z:\\User\\Chagas\\analysisResults\\"
 
-tree = cfs.get_folder_tree(filePath)
-fileList= [s for s in tree if "Pre" in s]
-fileList.sort()
 
-#flag to create the noise matrix
-noiseF=1
-noiseCount=0
-#cNoiseF=1  
+ 
 
 #turn analysis of responses to certain stimulus on/off.
-noiseFlag=True
-cnoiseFlag=True
-bgFlag=False
-chirpFlag=False
-dsFlag=False
+noiseFlag=False
+cnoiseFlag=False
+bgFlag=True
+chirpFlag=True
+dsFlag=True
 darkdsFlag=False
 spotFlag=False
 flickerFlag=False
 
-coorFlag=1
-
-for filePrefix in fileList:
-    print(filePrefix)
-    splitFile = filePrefix.split("\\")
-
-    fileName = splitFile[-1]
-#    #get stimulus used from filename:
-#    #reverse file name and find the first "_"
-#    index = fileName[::-1].index("_")
-#    #now subtract the full lenght of the string to get the index
-#    # in the non-reversed string
-#    index = len(fileName)-index
-#    sufix = fileName[index:fileName.index(".")]
-     sufix = fileName.split("_")
-     sufix = sufix[-1]
-     sufix = sufix.split(".")
-     sufix = sufix[0]
-#    if "noise" in filePrefix or "cnoise" in filePrefix:
-#        storeName2 = filePrefix[:]
-#        storeName2.replace("Data","user")
-#        storeName2.replace(folderName,"analysisResults\\"+folderName)
-#        storeName2.replace("\\Pre","")
-#        storeName2.replace(".h5","_resp.h5")
-#        hdStore2 = pd.HDFStore(storeName2,"w") 
-        
+allCells = 0
+#%% 
+for folder in experimentList[0:1]:
+    folderName=folder.split("\\")[0]+"\\"
+    subFolder = folder.split("\\")[1]+"\\"
+    filePath = dbPath+folder+"Pre\\"
+    tree = cfs.get_folder_tree(filePath)
+    fileList= [s for s in tree if "Pre" in s]
+    fileList.sort()
     
-    #substitute the "Pre" folder with "Raw" folder
-    rawFile = filePrefix.replace("\\Pre","\\Raw")
-    #replace "h5" with "smh"
-    rawFile = rawFile.replace(".h5",".smh")
-    rawFile = rawFile.replace("SMP_","")
-    #grab the string up to the raw folder
-    rawFolder = rawFile[0:rawFile.index("Raw")+4]
-    
-
-    #get ini file, in order to get which eye was used
-    experimentIni = filePrefix[0:filePrefix.index("\\Pre")+1]
-    experimentIni = cfs.get_folder_tree(experimentIni)
-    experimentIni = experimentIni[".ini" in experimentIni]
-
-    #get all raw recordings filenames in experiment folder
-    recList = cfs.get_folder_tree(rawFolder)
-    #keep only the header files
-    recList = [s for s in recList if ".smh" in s]
-    
-    if coorFlag==1:
-        #grab only the ones related to coordinate recording (edges + optic disk)
-        coorList = [s for s in recList if "loc" in s]
-        coorFlag = 0
-        
-
-    
-    if len(coorList) == 5:
-        fieldOut = cfs.process_field_location(iniFile = experimentIni,
-                                          edgesFolder = rawFolder,
-                                          fieldPath = rawFile ,pattern=None,
-                                          fileList = coorList[:]) 
-        fieldx = fieldOut["x"].dropna().values[0]
-        fieldy = fieldOut["y"].dropna().values[0]
-        
-    else:
-        print("something wrong with coordinate file headers")
-        fieldx=np.nan
-        fieldy=np.nan
-    
-    fieldx=pd.Series(fieldx,index=["0"],name=("x "+fieldOut.index[0],sufix))
-    fieldy=pd.Series(fieldy,index=["1"],name=("y "+fieldOut.index[1],sufix))
-    
-    imported, data = ipd.importPreprocessedData(filePath,fileName)
-    #close file
-    imported.close()
-                                        
-    #get all traces
-    allTraces = data["Traces0_raw"]
-    allTraces = allTraces.transpose()
-    dim=1
-        
-    #get OS_parameter dict
-    osPar = data["OS_Parameters"].to_dict()
-    #get sampling frequency
-    sampRate = osPar["Value"]["'samp_rate_Hz'"]
+    for filePrefix in fileList[10:11]:
+        if "loc" not in filePrefix: 
+            fileFolder=filePrefix[0:filePrefix.index("\\SMP")]
+            print(filePrefix)
+            splitFile = filePrefix.split("\\")
             
-    #get stimulator delay
-    stimDel = osPar["Value"]["'StimulatorDelay'"]
-    #get all rois
-    rois = data["ROIs"]
-    dicHead = rs.read_in_header(filePath = rawFile)
-
-    xcoor = cfs.coor2series(dicHead,"XCoord_um",sufix=sufix)
-    ycoor = cfs.coor2series(dicHead,"YCoord_um",sufix=sufix)
-    zcoor = cfs.coor2series(dicHead,"ZCoord_um",sufix=sufix)
+            fileName = splitFile[-1]
     
-    storeName = filePrefix[:]
-    storeName = storeName.replace("Data","user")
-    storeName = storeName.replace(folderName,"analysisResults\\"+folderName)
-    storeName = storeName.replace("\\Pre","")
-    storeName = storeName.replace(".h5","_panda.h5")
-    
-    hdStore = pd.HDFStore(storeName,"w") 
+            sufix = fileName.split("_")
+            sufix = sufix[-1]
+            sufix = sufix.split(".")
+            sufix = sufix[0]
 
-#    hdStore = pd.HDFStore(storePath+folderName+subFolder+fileName[0:-3]+"_panda.h5","w")
+            #get ini file, in order to get which eye was used
+            experimentIni = filePrefix[0:filePrefix.index("\\Pre")+1]
+            experimentIni = cfs.get_folder_tree(experimentIni)
+            experimentIni = experimentIni[".ini" in experimentIni]
+
+            #grab only the ones related to coordinate recording (edges + optic disk)
+            coorList = [s for s in fileList if "loc" in s]
+    
+            if len(coorList) > 0:
+                fieldOut,fieldOutAbs = cfs.process_field_location(iniFile = experimentIni,
+                                          edgesFolder = fileFolder,
+                                          fieldPath = filePrefix ,pattern=None,
+                                          fileList = coorList[:]) 
         
-    for i in range(0,np.size(allTraces,dim)):
-#    for i in [33,40,55,57,30,65,25,46,62,31,52,2,27,9,24,60,59,22,64,14,44,20,17,43,53,19,21]:
-        temp = "cell"+str(i+1)
-        print(temp) 
-        pixels,roix,roiy = cfs.calc_area(rois,i)
-        pixels=pixels*((110/64)*(110/64)) 
-        pixels = pd.Series(pixels,name=("area_um",sufix))
-        samp = pd.Series(sampRate,name=("sampRate",sufix))
-        stimDel = pd.Series(stimDel,name=("stimulator_delay",sufix))      
-                
-        #set the index to call from the roi dictionary
-        if i+1 < 10:
-            indx="00"+str(i+1)
-        elif i+1 < 100:
-            indx="0"+str(i+1)
-        else:
-            indx=str(i+1) 
-
-
-        if "noise" not in  filePrefix and "cnoise" not in filePrefix:
-            if "chirp" in filePrefix or "bg" in filePrefix or "spot" in filePrefix:
-                trig = 2
-                flag = 1
+                fieldx = fieldOut["x"].dropna().values[0]
+                fieldy = fieldOut["y"].dropna().values[0]
+                fieldxabs = fieldOutAbs["x"].dropna().values[0]
+                fieldyabs = fieldOutAbs["y"].dropna().values[0]
             else:
-                trig = 1
-                flag = 1
-        else:  
-            trig=1
-            flag=0
+                print("no coordinate recordings")
+                fieldx=np.nan
+                fieldy=np.nan
+                fieldOut = pd.DataFrame([[np.nan,np.nan]],index=["no_loc","no_loc"])
+                
+            if np.any(fieldOut.index == "ventral"):
+                fieldOut["x"] = fieldOut["x"]*-1
+            
+            if np.any(fieldOut.index == "nasal"):
+                fieldOut["y"] = fieldOut["y"]*-1
 
-        rawTrace = allTraces["ROI"+indx]
-#        plt.figure()
-#        plt.subplot(2,1,1)
-#        plt.plot(rawTrace)
-#        plt.subplot(2,1,2)
-#        plt.plot(np.diff(rawTrace))
-#        plt.legend(["cell"+str(i+1)])
+            fieldx=pd.Series(fieldx,index=[int(0)],name="relative_x")
+            fieldy=pd.Series(fieldy,index=[int(0)],name="relative_y")
+            
+            fieldxabs=pd.Series(fieldxabs,index=[int(0)],name="abs_x")
+
+            quadrant = pd.DataFrame([fieldOut.values[0][0],fieldOut.values[1][1],
+                                 fieldOutAbs.values[0][0],fieldOutAbs.values[1][1]],
+                                columns=[0],
+                                index=[fieldOut.index[0],fieldOut.index[1],
+                                       fieldOutAbs.index[0]+"_abs",fieldOutAbs.index[1]+"_abs"])
+
+#    if "loc" not in filePrefix:  
+            _,data = ipd.importPreprocessedData(filePath+"//"+fileName)
+                             
+        #get all traces
+            allTraces = data["Traces0_raw"]
+            allTraces = allTraces.transpose()
+            dim=1
         
-        traceTime = data["Tracetimes0"][i,:]
-        triggerTime = data["Triggers"]["Trigger Time"]
-#        allData = 0
-#        del allData
-        allData = cfs.raw2panda(rawTrace=rawTrace,traceTime=traceTime, 
+        #get OS_parameter dict
+#        osPar = 
+        #get sampling frequency
+            sampRate = data["OS_Parameters"]["samp_rate_hz"]
+            
+        #get stimulator delay
+            stimDel = data["OS_Parameters"]["stimulatordelay"]
+        #get all rois
+            rois = data["ROIs"]
+
+            xcoor = pd.Series(data['wParamsNum']['xcoord_um'],name='xcoord_um')
+            ycoor = pd.Series(data['wParamsNum']['ycoord_um'],name='ycoord_um')
+            zcoor = pd.Series(data['wParamsNum']['zcoord_um'],name='zcoord_um')
+    
+            storeName = filePrefix[:]
+            storeName = storeName.replace("Data","user")
+            storeName = storeName.replace(folderName,"analysisResults\\"+folderName)        
+        
+            if not os.path.exists(storeName[0:storeName.index("\\Pre")]):
+                os.makedirs(storeName[0:storeName.index("\\Pre")])
+        
+            storeName = storeName.replace("\\Pre","")
+            storeName = storeName.replace(".h5","_panda.h5")
+           
+            hdStore = pd.HDFStore(storeName,"w") 
+#%%   
+            for i in range(0,np.size(allTraces,dim)):
+#        for i in [33,40,55,57,30,65,25,46,62,31,52,2,27,9,24,60,59,22,64,14,44,20,17,43,53,19,21]:
+                temp = "cell"+str(i+1)
+                print(temp) 
+                pixels,roix,roiy = cfs.calc_area(rois,i)
+                pixels=pixels*((110/64)*(110/64)) 
+                pixels = pd.Series(pixels,name="area_um")
+                samp = pd.Series(sampRate,name="sampRate")
+                stimDel = pd.Series(stimDel,name="stimulator_delay")      
+                
+            #set the index to call from the roi dictionary
+                if i+1 < 10:
+                    indx="00"+str(i+1)
+                elif i+1 < 100:
+                    indx="0"+str(i+1)
+                else:
+                    indx=str(i+1) 
+
+
+                if "noise" not in  filePrefix and "cnoise" not in filePrefix:
+                    if "chirp" in filePrefix or "bg" in filePrefix or "spot" in filePrefix:
+                        trig = 2
+                        flag = 1
+                    else:
+                        trig = 1
+                        flag = 1
+                else:  
+                    trig = 1
+                    flag = 0
+
+                rawTrace = allTraces["ROI"+indx]
+        
+                traceTime = data["Tracetimes0"][i,:]
+                triggerTime = data["Triggertimes"]
+
+                allData = cfs.raw2panda(rawTrace=rawTrace,traceTime=traceTime, 
                                     triggerTime=triggerTime,
                                     trigMode=trig,sampRate=sampRate,
                                     stimName=sufix,trialFlag=flag)                                 
-
-        allData = allData.append(pixels)
-        allData = allData.append(samp)
-        allData = allData.append(stimDel)
-        allData = allData.append(xcoor)
-        allData = allData.append(ycoor)
-        allData = allData.append(zcoor)
-        allData = allData.append(fieldx)
-        allData = allData.append(fieldy)
-        
-        if "bg" in filePrefix and bgFlag is True:
-            allData = cfs.process_bg(allData)
+                
+                
+                allData = allData.append(pixels)
+                allData = allData.append(samp)
+                allData = allData.append(stimDel)
+                allData = allData.append(xcoor)
+                allData = allData.append(ycoor)
+                allData = allData.append(zcoor)
+                allData = allData.append(fieldx)
+                allData = allData.append(fieldy)
+                allData = allData.append(quadrant)
+#%%         
+                if "bg" in filePrefix and bgFlag is True:
+                    allData = cfs.process_bg(allData)
              
-           
-        if "ds" in filePrefix and dsFlag is True:
-            allData = cfs.process_ds(allData,sufix)
-        
-        if "darkds" in filePrefix and darkdsFlag is True:
-            allData = cfs.process_ds(allData,sufix)
-            
-        if "chirp" in filePrefix and chirpFlag is True:
-            allData = cfs.process_chirp(allData,natureData)
-                    
-        if "flicker" in filePrefix and flickerFlag is True:
+#%%            
+                if "ds" in filePrefix and dsFlag is True and "dark" not in filePrefix:
+                    sampRate = allData.transpose()["sampRate"].dropna().values[0]
 
-            stim,tStim = cfs.create_step(sampFreq=sampRate,sizes=1,onTime=2.0,offTime=2.0)
-            stim = pd.Series(stim.flatten(),name=("stimTrace",sufix))
-            tStim = pd.Series(tStim.flatten(),name = ("stimVector",sufix))
-            allData = allData.append(stim)
-            allData = allData.append(tStim)      
+                    stim,tStim,directions,screendur = cfs.create_ds_stim(sampFreq=sampRate)
+    
+                    indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
+                              [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
+                    trials = ['trial{0}'.format(i) for i in range(1,25)]
+
+                           
+                    resMatrix = allData.transpose()[trials]
+                    resMatrix = resMatrix.dropna()
                     
-        if "spot" in filePrefix and spotFlag is True:
+                    arr1inds = np.argsort(directions)
+                    directions = np.array(directions)
+                    directions = directions[arr1inds]
+
                     
-            stim,tStim = cfs.create_step(sampFreq=sampRate,sizes=2,onTime=2.0,offTime=2.0)
-            stim = pd.Series(stim.flatten(),name=("stimTrace",sufix))
-            tStim = pd.Series(tStim.flatten(),name = ("stimVector",sufix))
+                    
+
+                    resMatrix = np.array(resMatrix)
+                    dsMatrix = cfs.avg_matrix(matrix=resMatrix,grouping=indices)
+                    
+                    dsMatrix = dsMatrix[:,arr1inds]
+                    
+                    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
+                 
+                    tempDS = pd.DataFrame(dsMatrix,columns=trials)
+                    allData = allData.append(tempDS.transpose())
+                    
+                    #normalize matrix mean matrix:
+                    
+                    dsMatrix=dsMatrix/np.max(np.abs(np.median(dsMatrix,axis=1)))
                 
-            allData = allData.append(stim)
-            allData = allData.append(tStim)               
+                    #SVD analysis to determine direction and orientation selectivity
+                    normTrace,dsVector,tc = cfs.direction_selectivity(matrix=dsMatrix)
+    
+                    
+                    # make indices                    
+                    # DS/OS indices
+                    #convert bar angles to radians
+                    dirRad = np.deg2rad(directions)
+                    
+
+                    p,q,qdist = cfs.testTuningpy(dirs=dirRad, counts=dsVector, per=1);p 
+                    
+                    allData = allData.append(pd.Series(p,name="ds_stat_signif"))
+                    allData = allData.append(pd.Series(q,name="projected_index"))
+                    
                 
-        if ("noise" in filePrefix and noiseFlag is True and "cnoise" not in filePrefix) or \
-            ("cnoise" in filePrefix and cnoiseFlag is True):
-            
-            stimuliPath="Z:\\User\\Chagas\\RGCs_stimuli\\"
-            storeName2 = filePrefix[:]
-            storeName2 = storeName2.replace("Data","user")
-            storeName2 = storeName2.replace(folderName,"analysisResults\\"+folderName)
-            storeName2 = storeName2.replace("\\Pre","")
-            storeName2 = storeName2.replace(".h5","_resp.h5")
-            hdStore2 = pd.HDFStore(storeName2,"w") 
+                    allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
+                    
+                    #get the vector size on direction selectivity
+                    dsIndex = circ.resultant_vector_length(alpha=dirRad,w=dsVector,d=np.diff(dirRad))
+                                                   
+                    dsIndex = dsIndex[0]
+                    dsIndex = pd.Series(dsIndex,name="dirSelec")
         
-            if "noise" in filePrefix and "cnoise" not in filePrefix:
-                noiseFile = "BWNoise_official.txt"
+    
+    
+                    dsVector1 = [x for (y,x) in sorted(zip(directions,dsVector))]
+                    dsVector1.append(dsVector1[0])
+    
+#                    directions.sort()
+#                    directions.append(directions[0])
+                    allData = allData.append(pd.Series(directions,name="directions"))
+#                    del directions
+                    
+                    allData = allData.append(pd.Series(dsVector1,name="direction_vector"))
+                    
+                    dirRad1=dirRad[:]
+                    dirRad1 = np.append(dirRad1,dirRad1[0])
+                    
+                    allData = allData.append(pd.Series(dirRad1,name="radians"))           
+                    
+                    
+                    allData = allData.append(dsIndex)
+                    
+                
+                    ## needs finishing for orientation selectivity
+                    #    dsP = testTuning(dirRad,xx',1);
+                    #    pref_dir = circ_mean(dir,x);                
+                    #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
+                    #    os_p = testTuning(dir,xx',2);
+                    #    pref_ori = circ_mean(2*dir,x);                
+                
+
+
+                    ########ON OFF INDEX --> OOI ######
+                    onPix=dsMatrix[0:4,:]
+                    offPix=dsMatrix[28:32,:]
+                
+                    onResp=onPix #first 250ms
+                    offResp=offPix#last 250ms
+
+                    ooi = (onResp.mean(axis=0)-offResp.mean(axis=0))/   \
+                        (onResp.mean(axis=0)+offResp.mean(axis=0))
+                
+                    ooi = pd.Series(ooi.mean(),name="ooi")
+                
+                    allData = allData.append(ooi)
+                
+                    #stimulus
+#                    stim,tStim,directions,screenDur= cfs.create_ds_stim(sampFreq=sampRate)
+#                
+                    stim = pd.Series(stim.flatten(),name="stimTrace")
+                    tStim = pd.Series(tStim,name="stimVector")
+#                
+                    allData = allData.append(stim)
+                    allData = allData.append(tStim)
+#%%                     
+                if "darkds" in filePrefix and darkdsFlag is True:
+                    allData = cfs.process_ds(allData,sufix)
+#%%             
+                if "chirp" in filePrefix and chirpFlag is True:
+                    allData = cfs.process_chirp(allData,natureData)
+                    allCells = allCells + 1
+#                    clusterName="31"
+#                    plt.plot(natureData["c"+clusterName]["chirpMean"][0][0][0])
+#                    plt.plot(allData.loc["medianTrace"][0:249])
+#%% 
+                if "flicker" in filePrefix and flickerFlag is True:
+
+                    stim,tStim = cfs.create_step(sampFreq=sampRate,sizes=1,onTime=2.0,offTime=2.0)
+                    stim = pd.Series(stim.flatten(),name="stimTrace")
+                    tStim = pd.Series(tStim.flatten(),name = "stimVector")
+                    allData = allData.append(stim)
+                    allData = allData.append(tStim)      
+#%%                     
+                if "spot" in filePrefix and spotFlag is True:
+                    
+                    stim,tStim = cfs.create_step(sampFreq=sampRate,sizes=2,onTime=2.0,offTime=2.0)
+                    stim = pd.Series(stim.flatten(),name="stimTrace")
+                    tStim = pd.Series(tStim.flatten(),name = "stimVector")
+                
+                    allData = allData.append(stim)
+                    allData = allData.append(tStim)               
+#%%                 
+                if ("noise" in filePrefix and noiseFlag is True and "cnoise" not in filePrefix) or \
+                            ("cnoise" in filePrefix and cnoiseFlag is True):
+            
+                    stimuliPath="Z:\\User\\Chagas\\RGCs_stimuli\\"
+                    storeName2 = filePrefix[:]
+                    storeName2 = storeName2.replace("Data","user")
+                    storeName2 = storeName2.replace(folderName,"analysisResults\\"+folderName)
+                    storeName2 = storeName2.replace("\\Pre","")
+                    storeName2 = storeName2.replace(".h5","_resp.h5")
+                    hdStore2 = pd.HDFStore(storeName2,"w") 
+        
+                    if "noise" in filePrefix and "cnoise" not in filePrefix:
+                        noiseFile = "BWNoise_official.txt"
                     
                     #cNoise=False
-            else:
-                noiseFile = "colorNoise.txt"
+                    else:
+                        noiseFile = "colorNoise.txt"
 #                        cNoise=True
 #                        hdStore1 = pd.HDFStore(storePath+folderName+subFolder+filePrefix+sufix+"_cnoise.h5","w")
                 
-            noiseList = cfs.read_stimulus(stimuliPath+noiseFile)
+                    noiseList = cfs.read_stimulus(stimuliPath+noiseFile)
                 
-            noise = cfs.reconstruct_noise(noiseList)
+                    noise = cfs.reconstruct_noise(noiseList)
                 
             
 
-            #if noiseF==1 and noiseCount<2:
-            if ~os.path.isfile(storePath+folderName+subFolder+filePrefix+sufix+"_stim.h5"):
-                noiseStimPath = storeName[0:storeName.index(".")-6]
-                hdStore1 = pd.HDFStore(noiseStimPath+"_stim.h5","w")
-                for j in range(len(noise)):
-                    rFrame = pd.DataFrame(noise[j,:,:,0]) 
-                    gFrame = pd.DataFrame(noise[j,:,:,1]) 
-                    bFrame = pd.DataFrame(noise[j,:,:,2]) 
-                    exec("hdStore1['red_frame_"+str(j)+"'] = rFrame")
-                    exec("hdStore1['green_frame_"+str(j)+"'] = gFrame")
-                    exec("hdStore1['red_frame_"+str(j)+"'] = bFrame")
+                #if noiseF==1 and noiseCount<2:
+                    if ~os.path.isfile(storePath+folderName+subFolder+filePrefix+sufix+"_stim.h5"):
+                        noiseStimPath = storeName[0:storeName.index(".")-6]
+                        hdStore1 = pd.HDFStore(noiseStimPath+"_stim.h5","w")
+                        for j in range(len(noise)):
+                            rFrame = pd.DataFrame(noise[j,:,:,0]) 
+                            gFrame = pd.DataFrame(noise[j,:,:,1]) 
+                            bFrame = pd.DataFrame(noise[j,:,:,2]) 
+                            exec("hdStore1['red_frame_"+str(j)+"'] = rFrame")
+                            exec("hdStore1['green_frame_"+str(j)+"'] = gFrame")
+                            exec("hdStore1['red_frame_"+str(j)+"'] = bFrame")
                         
 #                        noiseCount=noiseCount+1
-                hdStore1.close()
+                        hdStore1.close()
 #                  noiseF=0
                     
                 
                 #pyplot.plot(trace)
-            if len(triggerTime)>=1000:
+                    if len(triggerTime)>=1000:
                     
-                trace,triggerInd,trigger = cfs.get_traces_n_triggers(allData)
-                trace = trace[~np.isnan(trace)]
+                        trace,triggerInd,trigger = cfs.get_traces_n_triggers(allData)
+                        trace = trace[~np.isnan(trace)]
                               
-                velTrace,normTrace,sd = cfs.get_vel_trace(trace)
-                
-                indexes = cfs.get_peaks_above_sd(trace = velTrace,sd = sd,onlypos=1)
+                        velTrace,normTrace,sd = cfs.get_vel_trace(trace)
                     
-                #create 5x5 gaussian window with 1 as standard deviation
-                gauss = cfs.create_2d_gaussian_window(5,5,1)
+                        indexes = cfs.get_peaks_above_sd(trace = velTrace,sd = sd,onlypos=1)
+                        
+                    #create 5x5 gaussian window with 1 as standard deviation
+                        gauss = cfs.create_2d_gaussian_window(5,5,1)
                 
 
 
 
                                 
-                allTimesG = list()
-                allTimesB = list()                                     
-                for j in range(0,-10,-1):
-                    if j<0:
-                        sign="neg"
-                    else:
-                        sign="pos"
+                        allTimesG = list()
+                        allTimesB = list()                                     
+                        for j in range(0,-10,-1):
+                            if j<0:
+                                sign="neg"
+                            else:
+                                sign="pos"
                         
-                    rawG=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
+                            rawG=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
                                        stimMatrix=noise[:,:,:,1],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
 #                    rawG = rawG/np.std(rawG)
                         
-                    rawB=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
+                            rawB=cfs.STA(spkInd=indexes,triggerInd=triggerInd.dropna(),
                                        stimMatrix=noise[:,:,:,2],responseTrace=trace,
                                        timeDelay=j,gaussianFilter=gauss)
                         
-                    avgG = np.mean(rawG,axis=0)                  
-                    avgB = np.mean(rawB,axis=0)
+                            avgG = np.mean(rawG,axis=0)                  
+                            avgB = np.mean(rawB,axis=0)
 
 #                    avgB = signal.convolve2d(in1=np.mean(rawB,axis=0),in2=gauss,
 #                                         mode="same",boundary='symm')
@@ -345,79 +456,44 @@ for filePrefix in fileList:
 #                                         mode="same",boundary='symm')
                     
                     
-                    tempG ="avg_green_RF_"+sign+str(abs(j))
-                    tempB ="avg_blue_RF_"+sign+str(abs(j))
+                            tempG ="avg_green_RF_"+sign+str(abs(j))
+                            tempB ="avg_blue_RF_"+sign+str(abs(j))
 
                         
-                    allTimesG.append(avgG)#/np.std(avgG))
+                            allTimesG.append(avgG)#/np.std(avgG))
 #                    allAvgG.append(avgG)
-                    allTimesB.append(avgB)#/np.std(avgB))
+                            allTimesB.append(avgB)#/np.std(avgB))
 #                    avgG=pd.DataFrame(avgG)
 #                    avgB=pd.DataFrame(avgB)
 
                             
-                    exec("hdStore2['"+temp+"_"+tempG+"'] = avgG")
-                    exec("hdStore2['"+temp+"_"+tempB+"'] = avgB")
-            
+                            exec("hdStore2['"+temp+"_"+tempG+"'] = pd.DataFrame(avgG)")
+                            exec("hdStore2['"+temp+"_"+tempB+"'] = pd.DataFrame(avgB)")
 
-                                                     
-                                                     
-#                allTimesG = (allTimesG/np.max(allTimesG))*255
-#                allTimesB = (allTimesB/np.max(allTimesB))*255
-
-#                fh=plt.figure()
-#                for frame in rawG:
-#                
-#                    plt.figure()
-#                    temp =np.dstack((np.zeros(np.shape(allTimesG[0])),allTimesG[nd],allTimesG[nd])) 
-#                    plt.imshow(allTimesG[nd]/np.std(allTimesG[nd]),
-#                           interpolation="None",cmap="gray",
-#                           vmax=np.max(allTimesG),
-#                           vmin=np.min(allTimesG),origin="upper")
+                        
+                        
+                        maxFrameG,maxRowG,maxColG = np.where(allTimesG==np.amax(allTimesG))
                 
-#                    gCon = list()
-#                    bCon = list()
-#                    
-#                    for i in range(len(allTimesG)):
-#                        gCon.append(signal.convolve2d(in1=allTimesG[i],
-#                                                      in2=gauss,
-#                                                      mode="same",boundary='symm'))
-#                        bCon.append(signal.convolve2d(in1=allTimesB[i],
-#                                                      in2=gauss,
-#                                                      mode="same",boundary='symm'))
-#                gCon = gCon-np.min(gCon)
-#                gCon = gCon/np.max(gCon)
-#                
-#                bCon = bCon-np.min(bCon)
-#                bCon = bCon/np.max(bCon)
-                
-#                k=1
-#                plt.matshow(gCon[k],cmap="gray",vmax=1,vmin=0)
-#                plt.matshow(bCon[k],cmap="gray",vmax=1,vmin=0)
-                
-                
-                maxFrameG,maxRowG,maxColG = np.where(allTimesG==np.amax(allTimesG))
-                
-                idxMaxG = pd.DataFrame([maxFrameG,maxRowG,maxColG],
-                                       index=[["frame","row","column"],[sufix,sufix,sufix]],
+                        idxMaxG = pd.DataFrame([maxFrameG,maxRowG,maxColG],
+                                       index=["frame","row","column"],
                                         columns=["max_green"])    
                 
-                minFrameG,minRowG,minColG = np.where(allTimesG==np.amin(allTimesG))
+                        minFrameG,minRowG,minColG = np.where(allTimesG==np.amin(allTimesG))
                 
-                idxMinG = pd.DataFrame([minFrameG,minRowG,minColG],
-                                       index=[["frame","row","column"],[sufix,sufix,sufix]],
+                        idxMinG = pd.DataFrame([minFrameG,minRowG,minColG],
+                                       index=["frame","row","column"],
                                         columns=["min_green"])
                 
-                maxFrameB,maxRowB,maxColB = np.where(allTimesB==np.amax(allTimesB))
+                        maxFrameB,maxRowB,maxColB = np.where(allTimesB==np.amax(allTimesB))
 #                
-                idxMaxB = pd.DataFrame([maxFrameB,maxRowB,maxColB],
-                                       index=[["frame","row","column"],[sufix,sufix,sufix]],
+                        idxMaxB = pd.DataFrame([maxFrameB,maxRowB,maxColB],
+                                       index=["frame","row","column"],
                                        columns=["max_blue"])
 #                
-                minFrameB,minRowB,minColB = np.where(allTimesB==np.amin(allTimesB))
-#                
-                idxMinB = pd.DataFrame([minFrameB,minRowB,minColB],
-                                       index=[["frame","row","column"],[sufix,sufix,sufix]],
+                        minFrameB,minRowB,minColB = np.where(allTimesB==np.amin(allTimesB))
+#                   
+                        idxMinB = pd.DataFrame([minFrameB,minRowB,minColB],
+                                       index=["frame","row","column"],
                                         columns=["min_blue"])
                 
 #                for k in range(0,5):#len(allTimesG)):
@@ -431,24 +507,25 @@ for filePrefix in fileList:
 #                        
 #                        plt.colorbar()
                         
-                allData = allData.append(idxMaxG)
-                allData = allData.append(idxMaxB)
-                allData = allData.append(idxMinG)
-                allData = allData.append(idxMinB)
+                        allData = allData.append(idxMaxG)
+                        allData = allData.append(idxMaxB)
+                        allData = allData.append(idxMinG)
+                        allData = allData.append(idxMinB)
                 
             #end if suifx is noise
-            hdStore2.close()
+                    hdStore2.close() 
             
-        hdStore[temp] = allData
-        del allData
+                hdStore[temp] = allData
+#            del allData
 #                allData.to_hdf(storePath+folderName+subFolder+filePrefix+sufix+"_panda.h5",
 #                           "/"+temp+"/",append=True)
-
-    hdStore.close()
+            
+            hdStore.close()
             #del hdStore
 #    if "hdStore2" in locals():
 #        hdStore2.close()
 ##            del allData
+
 
 #k=1
 #plt.matshow(allTimesG[k],vmin =np.amin(allTimesG), vmax=np.amax(allTimesG))
