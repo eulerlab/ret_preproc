@@ -19,12 +19,16 @@ import time
 import pycircstat as circ
 import peakutils as pk
 from configparser import ConfigParser
+import copy
+os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\load_after_igor_processing")
+import ImportPreprocessedData as ipd
+
+
+
+#os.chdir("E:\\github\\processing_pypeline\\" )
+#import readScanM as rsm
 
 sns.set_style("white")
-
-os.chdir("E:\\github\\processing_pypeline\\" )
-import readScanM as rsm
-
 
 def avg_matrix(matrix=None,grouping=None):
     """function to get the average response to each variant of a certain stimulus
@@ -503,16 +507,16 @@ def field_loc(ODseries,filePath="",pattern=pd.Series({"-x":"dorsal",
         root.withdraw()
                  
         filePath = fd.askopenfilenames(initialdir= filePath,
-                                    filetypes=[('header files', '.smh')],
+                                    filetypes=[('hdf5 files', '.h5')],
                                     title = ["choose the file containing the field recording"])
         filePath=filePath[0]
 
 
-        
-    fieldHeader = rsm.read_in_header(filePath = filePath)
+    _, fieldData = ipd.importPreprocessedData(filePath)
+
     
-    xfield = float(fieldHeader["XCoord_um"]) - ODseries["x"]
-    yfield = float(fieldHeader["YCoord_um"]) - ODseries["y"]
+    xfield = float(fieldData["wParamsNum"]["xcoord_um"]) - ODseries["x"]
+    yfield = float(fieldData["wParamsNum"]["ycoord_um"]) - ODseries["y"]
     #zfield = float(fieldHeader["ZCoord_um"]) - ODseries["z"]
 
     if xfield >= 0:
@@ -536,7 +540,9 @@ def field_loc(ODseries,filePath="",pattern=pd.Series({"-x":"dorsal",
 #    fieldOut = pd.DataFrame(data = [xfield,yfield],#,[zfield]], 
 #                            index = ["x","y"],#["x","y"],#,"z"],
 #                            columns = [[fx],[fy] ])#+" "+fz])
-#    
+#   
+#    print("test")
+#    print (fieldOut)
     return fieldOut
    
 
@@ -548,7 +554,7 @@ def get_folder_tree(folder):
 #        print(subdirs)
 #        print (files)
         for name in files:
-            #print (os.path.join(path, name))
+#            print (os.path.join(path, name))
             treeList.append(os.path.join(path, name))
         
     return treeList
@@ -566,7 +572,12 @@ def get_color_resp_max_value(respMatrix=None,interval=[5,10]):
     respMatrix=respMatrix[interval[0]:interval[1],:]
     maxVal=np.max(respMatrix**2)
     return maxVal
-  
+
+def get_clusters(allData):
+    temp = list(set(allData.cluster1.values))
+    temp = list(map(int,temp))
+    return temp      
+    
 def get_cluster_histogram(dictionary = None,plot=0,fh=None,export=0,fn=None):
     """this function uses the "cluster_distribution" output
     to get the number of cells in each cluster,the cluster indentification
@@ -678,9 +689,9 @@ def grab_baseline(trace=None,traceTime=None,triggerTime=None):
     #create binary array to indicate trigger points
     trigger,triggerInd = create_trigger_trace(trace,traceTime,triggerTime)    
     #catch the baseline    
-    baseline = trace[0:triggerInd[0]]
+    baseline = trace[triggerInd[0]-9:triggerInd[0]-1]
     if len(baseline) is 0:
-        baseline=0
+        baseline=trace[0]
         print("there was no baseline before 1st trigger")
     return baseline
 
@@ -742,11 +753,14 @@ def meanperc(datum=None,preStimDur=250,stimDur=500,
                subresponses, percentiles)#,classStr)    
 
 def normalize(respMatrix=None):
-    """normalize the data so max value of data  is 1.
+    """normalize the data so max value of data  is 1 or -1.
     Matrix should be timeXrepetitions"""
     #median = np.median(respMatrix,axis=0)
     #respMatrix1=respMatrix-abs(median)
+#    for idx in range(len(respMatrix)):
+        
     maxval=np.max(abs(respMatrix),axis=0)
+    
     respMatrix = np.divide(respMatrix,np.transpose(maxval))
     return respMatrix
 
@@ -757,7 +771,7 @@ def n_max_correlations(trace,dictionary,n_max):
     allCorr = list()
     allClus = list()
     allClusTrace = list()
-    corr=0
+    corr=-1
     corrClus=""
     clusTrace = 0
     keyUsed=list()
@@ -1038,6 +1052,8 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
     #rawTrace = roiDict["ROI"+indx]
     rawTrace = np.array(rawTrace)
     
+#    rawTrace = normalize(rawTrace)
+#    baseline = rawTrace[0:9]
     baseline = grab_baseline(trace=rawTrace,
                              traceTime=traceTime,
                              triggerTime=triggerTime)
@@ -1046,25 +1062,38 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
                                      trace=rawTrace)
     
     if trialFlag==1:
-        resMatrix,triggerTrace = trace2trial(trace=resTrace,
+        #create binary array to indicate trigger points
+        
+        triggerTrace,triggerInd = create_trigger_trace(resTrace,traceTime,triggerTime)
+        resMatrix = trace2trial(trace=resTrace,
                                 traceTime=traceTime,
                                 triggerTime=triggerTime,
-                                triggerMode=trigMode) 
-                
+                                triggerMode=trigMode,
+                                triggerInd=triggerInd) 
+        
+        for i in range (np.size(resMatrix,1)):
+           resMatrix[:,i]=resMatrix[:,i]-resMatrix[0,i]
+            
+        resMatrix = resMatrix/np.max(np.abs(np.median(resMatrix,axis=1)))
+        
+#        resMatrix = resMatrix-np.repeat(resMatrix[0,:],repeats=258,axis=0)
+#        resMatrix = np.transpose(resMatrix)
+        
         trialLabel = ['trial{0}'.format(i) for i in range(1,np.shape(resMatrix)[1]+1)]
-        stimName = [stimName]*len(trialLabel)    
-        array = [trialLabel,stimName]
-        ind = list(zip(*array))
+#        stimName = [stimName]*len(trialLabel)    
+#        array = [trialLabel,stimName]
+#        ind = list(zip(*array))
     
-        ind1 = pd.MultiIndex.from_tuples(ind, names=['trace', 'stimType'])
+#        ind1 = pd.MultiIndex.from_tuples(ind, names=['trace', 'stimType'])
            
         allData = pd.DataFrame(np.transpose(resMatrix),
-                           index = ind1)
-                
+                           index = trialLabel)
+        
+        
         medianTrace = np.median(resMatrix,axis=1)
         medianTrace = normalize(medianTrace)
                 
-        medianTrace = pd.Series(medianTrace,name=("medianTrace",stimName[0]))
+        medianTrace = pd.Series(medianTrace,name="medianTrace")
                 
         allData = allData.append(medianTrace)
                
@@ -1072,30 +1101,30 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
 #        taxis = pd.Series(taxis,name=())
         
         qi,minIdx = response_quality_index(stimMatrix=resMatrix)
-        allData = allData.append(pd.Series(qi,name = ("qualIndex",stimName[0])))
-        allData = allData.append(pd.Series(minIdx,name = ("minIndex",stimName[0])))
+        allData = allData.append(pd.Series(qi,name = "qualIndex"))
+        allData = allData.append(pd.Series(minIdx,name = "minIndex"))
     else:
-        stimName=[stimName,stimName]
+#        stimName=[stimName,stimName]
 #        resTrace = pd.Series(resTrace,name=("normTrace",stimName))
 #        ind = ["normTrace",stimName]
 #        ind = list(zip(*ind))
 #                
 #        ind = pd.MultiIndex.from_tuples(("trial","next"))   
-        resTrace=pd.Series(resTrace,name=("normTrace",stimName[0]))
+        resTrace=pd.Series(resTrace,name="normTrace")
         allData = pd.DataFrame(resTrace)
         allData = allData.transpose()
         
         triggerTrace,triggerInd = create_trigger_trace(rawTrace,traceTime,triggerTime)
-        triggerInd = pd.Series(triggerInd,name=("trigInd",stimName[0]))
+        triggerInd = pd.Series(triggerInd,name="trigInd")
         allData = allData.append(triggerInd)
         taxis = np.linspace(0,int(len(rawTrace)/sampRate),len(rawTrace))
         
         
         
-    taxis = pd.Series(taxis,name=("timeVector",stimName[0])) 
+    taxis = pd.Series(taxis,name="timeVector") 
     allData=allData.append(taxis)
     
-    triggerTrace = pd.Series(triggerTrace,name=("triggerTrace",stimName[0]))
+    triggerTrace = pd.Series(triggerTrace,name="triggerTrace")
     allData = allData.append(triggerTrace)
 
     return allData
@@ -1163,7 +1192,7 @@ def read_stimulus(filePath=None):
     return stim
 
     
-def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
+def retina_edges(edgesPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
                                                  "+x":"ventral",
                                                  "-y":"nasal",
                                                  "+y":"temporal"})):
@@ -1171,8 +1200,8 @@ def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
     and at the optic disk (OD). Use this information to calculate the relative distance from
     the edges to the optic disk.
     inputs: 
-        rawPath, optional input. Specificies from which directory to start the user dialogue
-        pattern - Input required to establish how the retina was positioned on the chamber. It
+        edgesPath: optional input. Specificies from which directory to start the user dialogue.
+        pattern: Input required to establish how the retina was positioned on the chamber. It
         should contain a dictionary with the following keys: "+x","-x","+y","-y" and the correspondent
         values (as strings) defined by the user.
     returns:
@@ -1186,11 +1215,11 @@ def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
     
     
         #choose files to open header
-        edges = fd.askopenfilenames(initialdir= rawPath,
-                                filetypes=[('header files', '.smh')],
+        edges = fd.askopenfilenames(initialdir= edgesPath,
+                                filetypes=[('hdf5 files', '.h5')],
                                 title = ["choose the files containing the edges recordings"])
-        od =    fd.askopenfilenames(initialdir= rawPath,
-                                filetypes=[('header files', '.smh')],
+        od =    fd.askopenfilenames(initialdir= edgesPath,
+                                filetypes=[('hdf5 files', '.h5')],
                                 title = ["choose the files containing the OD recording"])
     
     else:
@@ -1198,10 +1227,12 @@ def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
         od = od[0]
         fileList.remove(od)
         edges = fileList[:]
-        
-    ODheader = rsm.read_in_header(filePath = od)
-    odx = float(ODheader["XCoord_um"])
-    ody = float(ODheader["YCoord_um"])
+    
+    _, odData = ipd.importPreprocessedData(od)
+    
+     
+    odx = float(odData["wParamsNum"]["xcoord_um"])
+    ody = float(odData["wParamsNum"]["ycoord_um"])
     #odz = float(ODheader["ZCoord_um"])
     
     ODout = pd.Series([odx,ody],["x","y"],name="OD")#odz],["x","y","z"])
@@ -1211,16 +1242,16 @@ def retina_edges(rawPath="",fileList=None,pattern = pd.Series({"-x":"dorsal",
 
     for item in edges:
                 
-        header = rsm.read_in_header(filePath = item)
+        _, data = ipd.importPreprocessedData(item)
         
-        xtemp = float(header["XCoord_um"]) - odx
+        xtemp = float(data["wParamsNum"]["xcoord_um"]) - odx
 
         if xtemp >= 0:
             locx = pattern["+x"]
         else:
             locx = pattern["-x"]
         
-        ytemp = float(header["YCoord_um"]) - ody
+        ytemp = float(data["wParamsNum"]["ycoord_um"]) - ody
 
         
         if ytemp >= 0:
@@ -1257,14 +1288,15 @@ def STA(spkInd,triggerInd,stimMatrix,
     #timeDelay=abs(timeDelay)
     sta = list()
     for spk in spkInd:
-        
+
         #points where the spike happened after at least one trigger minus the timedelay
-        dummie,_ = np.where(triggerInd[:] <= np.array(spk+timeDelay))
+
+        dummie = np.where(triggerInd[:] <= np.array(spk+timeDelay))
         
-        if len(dummie) > 0:#if array is not empty
+        if len(dummie[0]) > 0:#if array is not empty
             
             #here only the last index is necessary
-            dummie = dummie[-1]
+            dummie = dummie[0][-1]
             
             #grab the respective frame from the stimulus matrix,
             #and multiply it by the spike value
@@ -1283,21 +1315,20 @@ def STA(spkInd,triggerInd,stimMatrix,
 def subtract_baseline_matrix(baseline=None,resMatrix=None):
     """function to subtract the median of the baseline from a matrix of responses
     (timeXrepetitions)"""
-    baseline=np.mean(baseline)
+    baseline=np.median(baseline)
     resMatrix=resMatrix-baseline
     return resMatrix
 
 def subtract_baseline(baseline=None,trace=None):
     """function to subtract the median of the baseline from the recorded trace"""
-    baseline=np.median(baseline)
-    trace=trace-baseline
+    trace=trace-np.median(baseline)
+    #trace = trace - trace[0]
     return trace
 
-def trace2trial(trace=None,traceTime=None,triggerTime=None,triggerMode=1):
+def trace2trial(trace=None,traceTime=None,triggerTime=None,triggerMode=1,triggerInd=None):
     """transform recorded traces and recorded 
     triggers into a timeXstimulus matrix"""
-    #create binary array to indicate trigger points
-    trigger,triggerInd = create_trigger_trace(trace,traceTime,triggerTime)
+
     #select which triggers to keep. Chirp stimululs has a wrong trigger every 
     #other trigger
     triggerInd=triggerInd[0::triggerMode]
@@ -1316,13 +1347,13 @@ def trace2trial(trace=None,traceTime=None,triggerTime=None,triggerMode=1):
     
     #run through all triggers.
     for i in range(1,rows+1):
-        if triggerInd[i]-triggerInd[i-1]==cols:
-            temp = trace[triggerInd[i-1]:triggerInd[i]]
+        if (triggerInd[i]+2)-(triggerInd[i-1]+2)==cols:
+            temp = trace[triggerInd[i-1]+2:triggerInd[i]+2]
         else:
-            temp = trace[triggerInd[i-1]:triggerInd[i]+1]
+            temp = trace[triggerInd[i-1]+2:triggerInd[i]+1+2]
         trials[i-1,0:len(temp)] = temp[:]
     trials=np.transpose(trials)
-    return trials, trigger
+    return trials
 
 
 
@@ -1331,29 +1362,54 @@ def testTuningpy(dirs,counts,per):
     Created on Fri Aug 19 10:23:32 2016
     testTuningpy is a translation to python for the matlab function "testTuning",
     originally developed in 2014 by Alexander Ecker and Philipp Berens
-
+    Input:
+        dirs: vector of directions (#directions x 1)
+        counts: matrix of spike counts as returned by getSpikeCounts.
+        per: fourier component to test (1 = direction, 2 =
+                   orientation)   
+    
+    Output:  
+        p:      p-value
+        q:      magnitude of second Fourier component
+        qdistr: sampling distribution of |q| under the null hypothesis    
+        
     @author: Andre M Chagas
     """
     itera = 1000
-    counts1 = counts[:]
-    
+    print(itera)
+    counts1 = copy.deepcopy(counts)
+#    counts1 = counts[:]
     c = np.shape(counts1)
-    k = dirs[:]
+#    k = dirs[:]
+    k = copy.deepcopy(dirs)
     v = np.exp(per*np.multiply(np.complex(0,1),k))
     v = v/np.sqrt(c[0])
+#    if len(v)>len(counts1):    
+#        q = np.abs(np.mean(counts1*v[0:-1]))
+#    elif len(counts1)>len(v):
+#        q = np.abs(np.mean(counts1[0:-1]*v))
+#    else:
     q = np.abs(np.mean(counts1*v))
     #q = q[0]
     qdistr = np.zeros(shape=(itera,1))
+    np.random.seed(seed=1)
     for j in range(itera):
         #r = np.random.randint(low=0,high=(c[0]*c[1])+1,size=(c[0],c[1]))
         #counts=[counts[z] for z in r]  
 
         
         np.random.shuffle(counts1)
-        #counts1 = counts1.reshape(c)
         
-
+        
+        #counts1 = counts1.reshape(c)
+#        if len(v)>len(counts1):    
+#            temp = np.abs(np.mean(counts1*v[0:-1]))
+#        elif len(counts1)>len(v):
+#            temp = np.abs(np.mean(counts1[0:-1]*v))
+#        else:
         temp = np.abs(np.mean(counts1*v))
+
+        
         qdistr[j] =temp
     p = np.mean(qdistr>q)
     
@@ -1421,52 +1477,50 @@ def remove_nans(array=None):
 
 
 def process_bg(allData):
-    sampRate = allData.transpose()["sampRate"].dropna().values[0][0]
+    sampRate = allData.transpose()["sampRate"].dropna().values[0]
     trials = ['trial{0}'.format(i) for i in range(1,4)]                           
     resMatrix = np.array(allData.transpose()[trials])
     notNans = ~np.isnan(resMatrix)                
     indx,indy = np.where(notNans==True)
     resMatrix = resMatrix[0:max(indx)+1,:]
     stim,tStim,_ = create_bg_stim(sampFreq=sampRate, greenFirst = 1)
-    stim = pd.Series(stim.flatten(),name=("stimTrace","bg"))
-    tStim = pd.Series(tStim.flatten(),name = ("stimVector","bg"))
+    stim = pd.Series(stim.flatten(),name="stimTrace")
+    tStim = pd.Series(tStim.flatten(),name = "stimVector")
     allData = allData.append(stim)
     allData = allData.append(tStim)
-    green=resMatrix[0:int(len(resMatrix)/2),:]
-    blue =resMatrix[int(len(resMatrix)/2)+1:,:]
+    blue=resMatrix[0:int(len(resMatrix)/2),:]
+    green=resMatrix[int(len(resMatrix)/2)+1:,:]
                 
                     #midPoint = 5 # 3 sec stimulation at 8Hz
-                
-    greenOn=get_color_resp_max_value(respMatrix=green,
-                                                         interval=[0,12])
-    blueOn =get_color_resp_max_value(respMatrix=blue,
-                                                   interval=[0,12])
+         
+    greenOn=get_color_resp_max_value(respMatrix=green, interval=[0,12])
+    blueOn =get_color_resp_max_value(respMatrix=blue,  interval=[0,12])
                 
     gbIon = (greenOn-blueOn)/(greenOn+blueOn)
-    gbIon = pd.Series(gbIon,name=("colorOnInd","bg"))
+    gbIon = pd.Series(gbIon,name="colorOnInd")
                 
-    greenOff=get_color_resp_max_value(respMatrix=green,
-                                                   interval=[13,26])
-    blueOff =get_color_resp_max_value(respMatrix=blue,
-                                                   interval=[13,26])
+    greenOff=get_color_resp_max_value(respMatrix=green, interval=[13,26])
+    blueOff =get_color_resp_max_value(respMatrix=blue,  interval=[13,26])
                 
     gbIoff = (greenOff-blueOff)/(greenOff+blueOff)
-    gbIoff = pd.Series(gbIoff,name=("colorOffInd","bg"))
+    gbIoff = pd.Series(gbIoff,name="colorOffInd")
                 
     allData = allData.append(gbIon)
     allData = allData.append(gbIoff)
                 
-    green = pd.Series(np.mean(green,axis=1),name=("avgGreen","bg"))
+    green = pd.Series(np.mean(green,axis=1),name="avgGreen")
     allData = allData.append(green)
                     
-    blue  = pd.Series(np.mean(blue,axis=1),name=("avgBlues","bg"))
+    blue  = pd.Series(np.mean(blue,axis=1),name="avgBlues")
     allData = allData.append(blue)
     
     return allData
     
 def process_ds(allData, sufix):
-    sampRate = allData.transpose()["sampRate"].dropna().values[0][0]
+    sampRate = allData.transpose()["sampRate"].dropna().values[0]
+
     stim,tStim,directions,screendur = create_ds_stim(sampFreq=sampRate)
+    
     indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
               [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
     trials = ['trial{0}'.format(i) for i in range(1,25)]
@@ -1474,88 +1528,86 @@ def process_ds(allData, sufix):
                            
     resMatrix = allData.transpose()[trials]
     resMatrix = resMatrix.dropna()
-                
+                    
+    arr1inds = np.argsort(directions)
+    directions = np.array(directions)
+    directions = directions[arr1inds]
+
     resMatrix = np.array(resMatrix)
     dsMatrix = avg_matrix(matrix=resMatrix,grouping=indices)
-                
-    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]
-    name = [sufix]*len(trials) 
-    ind = [trials,name]
-    ind = list(zip(*ind))
-                
-    ind = pd.MultiIndex.from_tuples(ind)                
+                    
+    dsMatrix = dsMatrix[:,arr1inds]
+                    
+    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
                  
-    tempDS = pd.DataFrame(dsMatrix,columns=ind)
+    tempDS = pd.DataFrame(dsMatrix,columns=trials)
     allData = allData.append(tempDS.transpose())
                     
     #normalize matrix mean matrix:
-    dsMatrix=(dsMatrix+np.max(np.abs(dsMatrix)))/np.max(np.abs(dsMatrix))
+                    
+    dsMatrix=dsMatrix/np.max(np.abs(np.median(dsMatrix,axis=1)))
                 
     #SVD analysis to determine direction and orientation selectivity
     normTrace,dsVector,tc = direction_selectivity(matrix=dsMatrix)
-                
-                
-    #circular shifted trace
-    #idx=np.argmax(x)
-    #ctrace = np.roll(meanDatum)
-                    
+               
     # make indices                    
     # DS/OS indices
     #convert bar angles to radians
-    dirRad=np.divide(directions,360.0)
-    dirRad=np.multiply(dirRad,(2*np.pi))
-    
-                
-    p,q,qdist = testTuningpy(dirs=dirRad, counts=dsVector, per=1) 
-                
-    allData = allData.append(pd.Series(p,name=("ds_stat_signif",sufix)))
-    allData = allData.append(pd.Series(q,name=("projected_index",sufix)))
-                
-#    ind = [sufix]*len(qdist)    
-#    ind = [qdist,ind]
-#    ind = list(zip(*ind))
-#    
-#    ind = pd.MultiIndex.from_tuples(ind)
-                
-    allData = allData.append(pd.Series(qdist.flatten(),name=("ds_shuff_projected_dist",sufix)))
-    #get the vector size on direction selectivity
-    dsIndex = circ.resultant_vector_length(alpha=dirRad,w=dsVector,d=np.diff(dirRad[0:2]))
-                                               
-    dsIndex = dsIndex[0]
-    dsIndex = pd.Series(dsIndex,name=("dirSelec",sufix))
-    dirRad = pd.Series(dirRad,name=("rad",sufix))
-    allData = allData.append(dirRad)
-    allData = allData.append(dsIndex)
-                    
-                
-    ## needs finishing for orientation selectivity
-#    dsP = testTuning(dirRad,xx',1);
-#    pref_dir = circ_mean(dir,x);                
-#    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
-#    os_p = testTuning(dir,xx',2);
-#    pref_ori = circ_mean(2*dir,x);                
-                
+    dirRad = np.deg2rad(directions)
 
+    p,q,qdist = testTuningpy(dirs=dirRad, counts=dsVector, per=1);p 
+                    
+    allData = allData.append(pd.Series(p,name="ds_stat_signif"))
+    allData = allData.append(pd.Series(q,name="projected_index"))
+               
+    allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
+                    
+    #get the vector size on direction selectivity
+    dsIndex = circ.resultant_vector_length(alpha=dirRad,w=dsVector,d=np.diff(dirRad))
+                                                   
+    dsIndex = dsIndex[0]
+    dsIndex = pd.Series(dsIndex,name="dirSelec")
+  
+    dsVector1 = [x for (y,x) in sorted(zip(directions,dsVector))]
+    dsVector1.append(dsVector1[0])
+    
+#    directions.sort()
+#    directions.append(directions[0])
+    allData = allData.append(pd.Series(directions,name="directions"))
+#    del directions
+                    
+    allData = allData.append(pd.Series(dsVector1,name="direction_vector"))
+                    
+    dirRad1=dirRad[:]
+    dirRad1 = np.append(dirRad1,dirRad1[0])
+                    
+    allData = allData.append(pd.Series(dirRad1,name="radians"))           
+                   
+    allData = allData.append(dsIndex)
+           
+    ## needs finishing for orientation selectivity
+    #    dsP = testTuning(dirRad,xx',1);
+    #    pref_dir = circ_mean(dir,x);                
+    #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
+    #    os_p = testTuning(dir,xx',2);
+    #    pref_ori = circ_mean(2*dir,x);                
 
     ########ON OFF INDEX --> OOI ######
-    onPix=dsMatrix[3:7,:]
+    onPix=dsMatrix[0:4,:]
     offPix=dsMatrix[28:32,:]
                 
     onResp=onPix #first 250ms
     offResp=offPix#last 250ms
 
     ooi = (onResp.mean(axis=0)-offResp.mean(axis=0))/   \
-            (onResp.mean(axis=0)+offResp.mean(axis=0))
+                        (onResp.mean(axis=0)+offResp.mean(axis=0))
                 
-    ooi = pd.Series(ooi.mean(),name=("ooi",sufix))
+    ooi = pd.Series(ooi.mean(),name="ooi")
                 
     allData = allData.append(ooi)
                 
-    #stimulus
-    stim,tStim,directions,screenDur= create_ds_stim(sampFreq=sampRate)
-                
-    stim = pd.Series(stim.flatten(),name=("stimTrace",sufix))
-    tStim = pd.Series(tStim,name=("stimVector",sufix))
+    stim = pd.Series(stim.flatten(),name="stimTrace")
+    tStim = pd.Series(tStim,name="stimVector")
                 
     allData = allData.append(stim)
     allData = allData.append(tStim)
@@ -1564,7 +1616,7 @@ def process_ds(allData, sufix):
     
 def process_chirp(allData,natureData):
     sufix="chirp"
-    sampRate = allData.transpose()["sampRate"].dropna().values[0][0]
+    sampRate = allData.transpose()["sampRate"].dropna().values[0]
     tempNatData  = natureData.copy()
 
     medianTrace = np.array(allData.transpose()["medianTrace"])
@@ -1575,20 +1627,22 @@ def process_chirp(allData,natureData):
     ind = [sufix]*len(corrClus)    
     ind = [corrClus,ind]
     ind = list(zip(*ind))
-    
-    ind = pd.MultiIndex.from_tuples(ind)
-                
+    try:
+        ind = pd.MultiIndex.from_tuples(ind)
+    except TypeError:
+        print(ind)
+            
     corrClus = [w.replace('c', '') for w in corrClus]
     corrClus = list(map(int,corrClus))
                 
     #corrClus
-    allData = allData.append(pd.Series(corr,name = ("clusCorrs",sufix)))
-    allData = allData.append(pd.Series(corrClus,name = ("clusIndx",sufix)))
+    allData = allData.append(pd.Series(corr,name = "clusCorrs"))
+    allData = allData.append(pd.Series(corrClus,name = "clusIndx"))
     allData=allData.append(pd.DataFrame(clusTrace,index=ind))
                 
     stim,tStim = create_chirp_stim(sampFreq=sampRate)
-    stim = pd.Series(list(stim.flatten()),name=("stimTrace",sufix))
-    tStim = pd.Series(list(tStim.flatten()),name=("stimVector",sufix))
+    stim = pd.Series(list(stim.flatten()),name="stimTrace")
+    tStim = pd.Series(list(tStim.flatten()),name="stimVector")
                 
     allData = allData.append(stim)
     allData = allData.append(tStim)                
@@ -1619,12 +1673,15 @@ def process_field_location (iniFile,edgesFolder,fieldPath,pattern=None,fileList=
                          "+y":"nasal"})
 
     
-    edgesOut,odOut = retina_edges(rawPath=edgesFolder,pattern = pattern,fileList = fileList[:])
-    print (edgesOut)
+    edgesOut,odOut = retina_edges(edgesPath=edgesFolder,pattern = pattern,fileList = fileList[:])
+    #print (edgesOut)
     
     fieldOut = field_loc(ODseries=odOut,
                          filePath = fieldPath,pattern = pattern)
-
+    
+    fieldOutAbs = fieldOut.copy()
+#    print(fieldOutAbs)
+#    print()
     fieldLoc = fieldOut.index#fieldOut.columns[0].split(" ")
 
     for val in edgesOut.index:
@@ -1635,9 +1692,13 @@ def process_field_location (iniFile,edgesFolder,fieldPath,pattern=None,fileList=
     #index = tuple(index)
     fieldOut.loc[fieldLoc[0],"x"] = fieldOut.loc[fieldLoc[0],"x"]/edgesOut["x"][index]
     fieldOut.loc[fieldLoc[1],"y"] = fieldOut.loc[fieldLoc[1],"y"]/edgesOut["y"][index]
-
-    return fieldOut
+#    print("after")
+#    print(fieldOutAbs)
     
+    return fieldOut,fieldOutAbs
+
+
+
 ###########original MATLAB FUNCTION###############
 #function [p, q, qdistr] = testTuning(dirs, counts, per)
 #% Test significance of orientation tuning by permutation test.
@@ -1671,9 +1732,64 @@ def process_field_location (iniFile,edgesFolder,fieldPath,pattern=None,fileList=
 #end
 #p = mean(qdistr > q);
 
+
+
 ##############################################################################       
+import numpy as np
+from numpy import pi, r_
+import matplotlib.pyplot as plt
+from scipy import optimize
+
+def gaussian(height, center_x, center_y, width_x, width_y):
+    """Returns a gaussian function with the given parameters"""
+    width_x = float(width_x)
+    width_y = float(width_y)
+    return lambda x,y: height*np.exp(
+                -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
+
+def moments(data):
+    """Returns (height, x, y, width_x, width_y)
+    the gaussian parameters of a 2D distribution by calculating its
+    moments """
+    total = data.sum()
+    X, Y = np.indices(data.shape)
+    x = (X*data).sum()/total
+    y = (Y*data).sum()/total
+    col = data[:, int(y)]
+    width_x = np.sqrt(np.abs((np.arange(col.size)-y)**2*col).sum()/col.sum())
+    row = data[int(x), :]
+    width_y = np.sqrt(np.abs((np.arange(row.size)-x)**2*row).sum()/row.sum())
+    height = data.max()
+    return height, x, y, width_x, width_y
+
+def fitgaussian(data):
+    """Returns (height, x, y, width_x, width_y)
+    the gaussian parameters of a 2D distribution found by a fit"""
+    params = moments(data)
+    errorfunction = lambda p: np.ravel(gaussian(*p)(*np.indices(data.shape)) -
+                                 data)
+    p, success = optimize.leastsq(errorfunction, params)
+    return p
 
 
-
-
-    
+#http://scipy-cookbook.readthedocs.io/items/FittingData.html
+#Xin, Yin = np.mgrid[0:16, 0:21]
+#y,x = np.where(avgG == np.amax(avgG))
+#data = gaussian( x[0],y[0], np.max(avgG), 1, 1)(Xin, Yin) + np.random.random(Xin.shape)
+#
+#plt.matshow(data, cmap=plt.cm.gist_earth_r)
+#
+#params = fitgaussian(data)
+#fit = gaussian(*params)
+#
+#plt.contour(fit(*np.indices(data.shape)), cmap=plt.cm.copper)
+#ax = plt.gca()
+#(height, x, y, width_x, width_y) = params
+#
+#plt.text(0.95, 0.05, """
+#x : %.1f
+#y : %.1f
+#width_x : %.1f
+#width_y : %.1f""" %(x, y, width_x, width_y),
+#        fontsize=16, horizontalalignment='right',
+#        verticalalignment='bottom', transform=ax.transAxes)
