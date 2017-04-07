@@ -675,19 +675,20 @@ def get_peaks_above_sd(trace,sd,onlypos=1):
 #        indexes=pk.indexes(y=abs(trace),thres=float(sd),min_dist=1)
     return indexes
                         
-def grab_baseline(trace=None,traceTime=None,triggerTime=None):
+def grab_baseline(trace,triggerInd):
     """grab the baseline trace, aka the signal recorded before the 
     first trigger happens
     inputs:
         trace: the recorded trace - all trials in one trace
-        traceTime: the time vector for the recorded trace
+        triggerInd: array with the trigger indexes
+#        traceTime: the time vector for the recorded trace
         triggerTime: list or array with the trigger timepoints
     outputs:
         baseline: snip of trace before the first trigger
         """
     
-    #create binary array to indicate trigger points
-    trigger,triggerInd = create_trigger_trace(trace,traceTime,triggerTime)    
+#    #create binary array to indicate trigger points
+#    trigger,triggerInd = create_trigger_trace(trace,traceTime,triggerTime)    
     #catch the baseline    
     baseline = trace[triggerInd[0]-9:triggerInd[0]-1]
     if len(baseline) is 0:
@@ -1049,30 +1050,30 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
     it requires the raw ROI trace, the trace time vector, the trigger time
     array, the trigger mode(1 for taking every trigger, 2 for skipping every
     other, and so on..), and sampling rate."""
-    #rawTrace = roiDict["ROI"+indx]
+
     rawTrace = np.array(rawTrace)
     
-#    rawTrace = normalize(rawTrace)
-#    baseline = rawTrace[0:9]
-    baseline = grab_baseline(trace=rawTrace,
-                             traceTime=traceTime,
-                             triggerTime=triggerTime)
+    triggerTrace,triggerInd = create_trigger_trace(rawTrace,traceTime,triggerTime)
+    
+    baseline = grab_baseline(rawTrace,
+                             triggerInd)
                                                                                                                 
-    resTrace = subtract_baseline(baseline=baseline, 
-                                     trace=rawTrace)
+    resTrace = rawTrace-np.median(baseline)
+    
+    
     
     if trialFlag==1:
         #create binary array to indicate trigger points
         
-        triggerTrace,triggerInd = create_trigger_trace(resTrace,traceTime,triggerTime)
+#        triggerTrace,triggerInd = create_trigger_trace(resTrace,traceTime,triggerTime)
+        
         resMatrix = trace2trial(trace=resTrace,
-                                traceTime=traceTime,
                                 triggerTime=triggerTime,
                                 triggerMode=trigMode,
                                 triggerInd=triggerInd) 
         
-        for i in range (np.size(resMatrix,1)):
-           resMatrix[:,i]=resMatrix[:,i]-resMatrix[0,i]
+#        for i in range (np.size(resMatrix,1)):
+#           resMatrix[:,i]=resMatrix[:,i]-resMatrix[0,i]
             
         resMatrix = resMatrix/np.max(np.abs(np.median(resMatrix,axis=1)))
         
@@ -1091,7 +1092,7 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
         
         
         medianTrace = np.median(resMatrix,axis=1)
-        medianTrace = normalize(medianTrace)
+#        medianTrace = normalize(medianTrace)
                 
         medianTrace = pd.Series(medianTrace,name="medianTrace")
                 
@@ -1099,8 +1100,22 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
                
         taxis = np.linspace(0,int(len(resMatrix)/sampRate),len(resMatrix))
 #        taxis = pd.Series(taxis,name=())
-        
-        qi,minIdx = response_quality_index(stimMatrix=resMatrix)
+        if stimName  != "ds" and stimName != "darkds":
+            qi,minIdx = response_quality_index(stimMatrix=resMatrix)
+            
+        else:
+            indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
+                      [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
+            qualMatrix = resMatrix[:,indices]
+            qi = list()
+
+            for i in range(np.size(qualMatrix,1)):
+                tem1,tem2 = response_quality_index(stimMatrix=qualMatrix[:,i,:])
+                qi.append(tem1)
+                        
+            qi = np.max(qi)
+            minIdx = tem2
+                    
         allData = allData.append(pd.Series(qi,name = "qualIndex"))
         allData = allData.append(pd.Series(minIdx,name = "minIndex"))
     else:
@@ -1131,7 +1146,7 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
    
 def response_quality_index(stimMatrix=None):
     """function to calculate quality index of a given cell under a certain
-    stimulation. 2D Matrix has to be arranged by (timeXstimulation repetitions)
+    stimulation. 2D Matrix has to be arranged by (timeXstimulus repetitions)
     The calculation is the variance of the mean divided by the mean of the
     variance"""
     import numpy as np
@@ -1325,11 +1340,11 @@ def subtract_baseline(baseline=None,trace=None):
     #trace = trace - trace[0]
     return trace
 
-def trace2trial(trace=None,traceTime=None,triggerTime=None,triggerMode=1,triggerInd=None):
+def trace2trial(trace=None,triggerTime=None,triggerMode=1,triggerInd=None):
     """transform recorded traces and recorded 
     triggers into a timeXstimulus matrix"""
 
-    #select which triggers to keep. Chirp stimululs has a wrong trigger every 
+    #select which triggers to keep. Chirp stimululs has a "wrong" trigger every 
     #other trigger
     triggerInd=triggerInd[0::triggerMode]
     
@@ -1343,14 +1358,14 @@ def trace2trial(trace=None,traceTime=None,triggerTime=None,triggerMode=1,trigger
     #add one last value to the triggerInd to cycle through the trace easier
     add = triggerInd[-1]+cols
     triggerInd.append(add)
-    trials = np.empty(shape=(rows,cols))
+    trials = np.zeros(shape=(rows,cols))
     
     #run through all triggers.
     for i in range(1,rows+1):
-        if (triggerInd[i]+2)-(triggerInd[i-1]+2)==cols:
-            temp = trace[triggerInd[i-1]+2:triggerInd[i]+2]
+        if (triggerInd[i])-(triggerInd[i-1])==cols:
+            temp = trace[triggerInd[i-1]:triggerInd[i]]
         else:
-            temp = trace[triggerInd[i-1]+2:triggerInd[i]+1+2]
+            temp = trace[triggerInd[i-1]:triggerInd[i]+1]
         trials[i-1,0:len(temp)] = temp[:]
     trials=np.transpose(trials)
     return trials
@@ -1376,12 +1391,14 @@ def testTuningpy(dirs,counts,per):
     @author: Andre M Chagas
     """
     itera = 1000
-    print(itera)
+
     counts1 = copy.deepcopy(counts)
+    
 #    counts1 = counts[:]
     c = np.shape(counts1)
 #    k = dirs[:]
     k = copy.deepcopy(dirs)
+    
     v = np.exp(per*np.multiply(np.complex(0,1),k))
     v = v/np.sqrt(c[0])
 #    if len(v)>len(counts1):    
@@ -1392,6 +1409,8 @@ def testTuningpy(dirs,counts,per):
     q = np.abs(np.mean(counts1*v))
     #q = q[0]
     qdistr = np.zeros(shape=(itera,1))
+    counts1 = np.transpose(counts1)
+    
     np.random.seed(seed=1)
     for j in range(itera):
         #r = np.random.randint(low=0,high=(c[0]*c[1])+1,size=(c[0],c[1]))
@@ -1407,7 +1426,7 @@ def testTuningpy(dirs,counts,per):
 #        elif len(counts1)>len(v):
 #            temp = np.abs(np.mean(counts1[0:-1]*v))
 #        else:
-        temp = np.abs(np.mean(counts1*v))
+        temp = np.abs(np.mean(np.transpose(counts1)*v))
 
         
         qdistr[j] =temp
@@ -1490,6 +1509,8 @@ def process_bg(allData):
     allData = allData.append(tStim)
     blue=resMatrix[0:int(len(resMatrix)/2),:]
     green=resMatrix[int(len(resMatrix)/2)+1:,:]
+    
+#    qi,minIdx = response_quality_index(stimMatrix=resMatrix)
                 
                     #midPoint = 5 # 3 sec stimulation at 8Hz
          
@@ -1532,12 +1553,27 @@ def process_ds(allData, sufix):
     arr1inds = np.argsort(directions)
     directions = np.array(directions)
     directions = directions[arr1inds]
+                    
+                                        
+                    
 
     resMatrix = np.array(resMatrix)
     dsMatrix = avg_matrix(matrix=resMatrix,grouping=indices)
-                    
     dsMatrix = dsMatrix[:,arr1inds]
-                    
+
+#    qualMatrix = resMatrix[:,indices]
+#    qi = list()
+#
+#    for i in range(np.size(qualMatrix,1)):
+#        tem1,tem2 = cfs.response_quality_index(stimMatrix=qualMatrix[:,i,:])
+#        qi.append(tem1)
+#                        
+#    qi = np.max(qi)
+#    minIdx = tem2
+#                    
+#    allData = allData.append(pd.Series(qi,name = "qualIndex"))
+#    allData = allData.append(pd.Series(minIdx,name = "minIndex"))
+
     trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
                  
     tempDS = pd.DataFrame(dsMatrix,columns=trials)
@@ -1549,17 +1585,20 @@ def process_ds(allData, sufix):
                 
     #SVD analysis to determine direction and orientation selectivity
     normTrace,dsVector,tc = direction_selectivity(matrix=dsMatrix)
-               
+    
+                    
     # make indices                    
     # DS/OS indices
     #convert bar angles to radians
     dirRad = np.deg2rad(directions)
+                    
 
-    p,q,qdist = testTuningpy(dirs=dirRad, counts=dsVector, per=1);p 
+    p,q,qdist = testTuningpy(dirs=dirRad, counts=dsMatrix, per=1) 
                     
     allData = allData.append(pd.Series(p,name="ds_stat_signif"))
     allData = allData.append(pd.Series(q,name="projected_index"))
-               
+                    
+                
     allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
                     
     #get the vector size on direction selectivity
@@ -1567,10 +1606,12 @@ def process_ds(allData, sufix):
                                                    
     dsIndex = dsIndex[0]
     dsIndex = pd.Series(dsIndex,name="dirSelec")
-  
+        
+    
+    
     dsVector1 = [x for (y,x) in sorted(zip(directions,dsVector))]
     dsVector1.append(dsVector1[0])
-    
+    directions = np.append(directions,360)
 #    directions.sort()
 #    directions.append(directions[0])
     allData = allData.append(pd.Series(directions,name="directions"))
@@ -1582,15 +1623,19 @@ def process_ds(allData, sufix):
     dirRad1 = np.append(dirRad1,dirRad1[0])
                     
     allData = allData.append(pd.Series(dirRad1,name="radians"))           
-                   
+                    
+                    
     allData = allData.append(dsIndex)
-           
+                    
+                
     ## needs finishing for orientation selectivity
     #    dsP = testTuning(dirRad,xx',1);
     #    pref_dir = circ_mean(dir,x);                
     #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
     #    os_p = testTuning(dir,xx',2);
     #    pref_ori = circ_mean(2*dir,x);                
+                
+
 
     ########ON OFF INDEX --> OOI ######
     onPix=dsMatrix[0:4,:]
@@ -1600,15 +1645,18 @@ def process_ds(allData, sufix):
     offResp=offPix#last 250ms
 
     ooi = (onResp.mean(axis=0)-offResp.mean(axis=0))/   \
-                        (onResp.mean(axis=0)+offResp.mean(axis=0))
+            (onResp.mean(axis=0)+offResp.mean(axis=0))
                 
     ooi = pd.Series(ooi.mean(),name="ooi")
                 
     allData = allData.append(ooi)
                 
+    #stimulus
+#    stim,tStim,directions,screenDur= cfs.create_ds_stim(sampFreq=sampRate)
+#                
     stim = pd.Series(stim.flatten(),name="stimTrace")
     tStim = pd.Series(tStim,name="stimVector")
-                
+#                
     allData = allData.append(stim)
     allData = allData.append(tStim)
     
@@ -1638,7 +1686,7 @@ def process_chirp(allData,natureData):
     #corrClus
     allData = allData.append(pd.Series(corr,name = "clusCorrs"))
     allData = allData.append(pd.Series(corrClus,name = "clusIndx"))
-    allData=allData.append(pd.DataFrame(clusTrace,index=ind))
+    allData = allData.append(pd.DataFrame(clusTrace,index=ind))
                 
     stim,tStim = create_chirp_stim(sampFreq=sampRate)
     stim = pd.Series(list(stim.flatten()),name="stimTrace")

@@ -48,9 +48,9 @@ experimentList=[#"20161102\\1\\","20170119\\1\\",
                 #"20160927\\1\\","20161005\\2\\",
                 #"20161017\\1\\","20161011\\1\\",
                 #"20170217\\1\\","20170221\\1\\",
-                #"20170223\\2\\","20170223\\1\\",                
+                "20170223\\2\\","20170223\\1\\",                
                 #"20161026\\1\\","20161102\\1\\",
-                "20170119\\1\\", 
+                #"20170119\\1\\", 
                  ]
                 #
 #folderName = "20170223\\"
@@ -80,7 +80,7 @@ flickerFlag=False
 
 allCells = 0
 #%% 
-for folder in experimentList[0:1]:
+for folder in experimentList:
     folderName=folder.split("\\")[0]+"\\"
     subFolder = folder.split("\\")[1]+"\\"
     filePath = dbPath+folder+"Pre\\"
@@ -88,7 +88,7 @@ for folder in experimentList[0:1]:
     fileList= [s for s in tree if "Pre" in s]
     fileList.sort()
     
-    for filePrefix in fileList[10:11]:
+    for filePrefix in fileList:
         if "loc" not in filePrefix: 
             fileFolder=filePrefix[0:filePrefix.index("\\SMP")]
             print(filePrefix)
@@ -232,115 +232,7 @@ for folder in experimentList[0:1]:
              
 #%%            
                 if "ds" in filePrefix and dsFlag is True and "dark" not in filePrefix:
-                    sampRate = allData.transpose()["sampRate"].dropna().values[0]
-
-                    stim,tStim,directions,screendur = cfs.create_ds_stim(sampFreq=sampRate)
-    
-                    indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
-                              [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
-                    trials = ['trial{0}'.format(i) for i in range(1,25)]
-
-                           
-                    resMatrix = allData.transpose()[trials]
-                    resMatrix = resMatrix.dropna()
-                    
-                    arr1inds = np.argsort(directions)
-                    directions = np.array(directions)
-                    directions = directions[arr1inds]
-
-                    
-                    
-
-                    resMatrix = np.array(resMatrix)
-                    dsMatrix = cfs.avg_matrix(matrix=resMatrix,grouping=indices)
-                    
-                    dsMatrix = dsMatrix[:,arr1inds]
-                    
-                    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
-                 
-                    tempDS = pd.DataFrame(dsMatrix,columns=trials)
-                    allData = allData.append(tempDS.transpose())
-                    
-                    #normalize matrix mean matrix:
-                    
-                    dsMatrix=dsMatrix/np.max(np.abs(np.median(dsMatrix,axis=1)))
-                
-                    #SVD analysis to determine direction and orientation selectivity
-                    normTrace,dsVector,tc = cfs.direction_selectivity(matrix=dsMatrix)
-    
-                    
-                    # make indices                    
-                    # DS/OS indices
-                    #convert bar angles to radians
-                    dirRad = np.deg2rad(directions)
-                    
-
-                    p,q,qdist = cfs.testTuningpy(dirs=dirRad, counts=dsVector, per=1);p 
-                    
-                    allData = allData.append(pd.Series(p,name="ds_stat_signif"))
-                    allData = allData.append(pd.Series(q,name="projected_index"))
-                    
-                
-                    allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
-                    
-                    #get the vector size on direction selectivity
-                    dsIndex = circ.resultant_vector_length(alpha=dirRad,w=dsVector,d=np.diff(dirRad))
-                                                   
-                    dsIndex = dsIndex[0]
-                    dsIndex = pd.Series(dsIndex,name="dirSelec")
-        
-    
-    
-                    dsVector1 = [x for (y,x) in sorted(zip(directions,dsVector))]
-                    dsVector1.append(dsVector1[0])
-    
-#                    directions.sort()
-#                    directions.append(directions[0])
-                    allData = allData.append(pd.Series(directions,name="directions"))
-#                    del directions
-                    
-                    allData = allData.append(pd.Series(dsVector1,name="direction_vector"))
-                    
-                    dirRad1=dirRad[:]
-                    dirRad1 = np.append(dirRad1,dirRad1[0])
-                    
-                    allData = allData.append(pd.Series(dirRad1,name="radians"))           
-                    
-                    
-                    allData = allData.append(dsIndex)
-                    
-                
-                    ## needs finishing for orientation selectivity
-                    #    dsP = testTuning(dirRad,xx',1);
-                    #    pref_dir = circ_mean(dir,x);                
-                    #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
-                    #    os_p = testTuning(dir,xx',2);
-                    #    pref_ori = circ_mean(2*dir,x);                
-                
-
-
-                    ########ON OFF INDEX --> OOI ######
-                    onPix=dsMatrix[0:4,:]
-                    offPix=dsMatrix[28:32,:]
-                
-                    onResp=onPix #first 250ms
-                    offResp=offPix#last 250ms
-
-                    ooi = (onResp.mean(axis=0)-offResp.mean(axis=0))/   \
-                        (onResp.mean(axis=0)+offResp.mean(axis=0))
-                
-                    ooi = pd.Series(ooi.mean(),name="ooi")
-                
-                    allData = allData.append(ooi)
-                
-                    #stimulus
-#                    stim,tStim,directions,screenDur= cfs.create_ds_stim(sampFreq=sampRate)
-#                
-                    stim = pd.Series(stim.flatten(),name="stimTrace")
-                    tStim = pd.Series(tStim,name="stimVector")
-#                
-                    allData = allData.append(stim)
-                    allData = allData.append(tStim)
+                    allData = cfs.process_ds(allData,sufix)
 #%%                     
                 if "darkds" in filePrefix and darkdsFlag is True:
                     allData = cfs.process_ds(allData,sufix)
