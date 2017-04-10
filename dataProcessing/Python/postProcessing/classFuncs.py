@@ -19,11 +19,12 @@ import time
 import pycircstat as circ
 import peakutils as pk
 from configparser import ConfigParser
+import copy
 
 sns.set_style("white")
 
-os.chdir("E:\\github\\processing_pypeline\\" )
-import readScanM as rsm
+# os.chdir("E:\\github\\processing_pypeline\\" )
+# import readScanM as rsm
 
 
 def avg_matrix(matrix=None,grouping=None):
@@ -481,7 +482,7 @@ def direction_selectivity(matrix=None):
                     
     dsVector = s * V[:,0]
     dsVector = dsVector - np.min(dsVector)
-    dsVector = dsVector/max(dsVector);
+    dsVector = dsVector/max(dsVector)
                 
     tc = s * U[:,0]
     tc = tc - np.mean(tc[0:7])
@@ -1335,10 +1336,10 @@ def testTuningpy(dirs,counts,per):
     @author: Andre M Chagas
     """
     itera = 1000
-    counts1 = counts[:]
+    counts1 = copy.deepcopy(counts[:])
     
     c = np.shape(counts1)
-    k = dirs[:]
+    k = copy.deepcopy(dirs[:])
     v = np.exp(per*np.multiply(np.complex(0,1),k))
     v = v/np.sqrt(c[0])
     q = np.abs(np.mean(counts1*v))
