@@ -23,8 +23,8 @@
       <file leaf-file-name="classFuncs.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/classFuncs.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="7254">
-              <caret line="1338" column="23" selection-start-line="1338" selection-start-column="19" selection-end-line="1338" selection-end-column="23" />
+            <state relative-caret-position="159">
+              <caret line="1356" column="10" selection-start-line="1356" selection-start-column="4" selection-end-line="1356" selection-end-column="10" />
               <folding>
                 <element signature="e#105#136#0" expanded="true" />
               </folding>
@@ -52,9 +52,9 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="1272" />
+    <option name="x" value="1050" />
     <option name="y" value="23" />
-    <option name="width" value="1150" />
+    <option name="width" value="1372" />
     <option name="height" value="1323" />
   </component>
   <component name="ProjectLevelVcsManager" settingsEditedManually="false">
@@ -255,10 +255,10 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="1272" y="23" width="1150" height="1323" extended-state="0" />
-    <editor active="false" />
+    <frame x="1050" y="23" width="1372" height="1323" extended-state="0" />
+    <editor active="true" />
     <layout>
-      <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.23130435" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19387755" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -328,8 +328,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/classFuncs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="7254">
-          <caret line="1338" column="23" selection-start-line="1338" selection-start-column="19" selection-end-line="1338" selection-end-column="23" />
+        <state relative-caret-position="159">
+          <caret line="1356" column="10" selection-start-line="1356" selection-start-column="4" selection-end-line="1356" selection-end-column="10" />
           <folding>
             <element signature="e#105#136#0" expanded="true" />
           </folding>

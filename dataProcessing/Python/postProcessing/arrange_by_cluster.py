@@ -13,6 +13,7 @@ Created on Tue Jan 24 14:27:43 2017
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\postProcessing")
 import classFuncs as cfs
 import numpy as np
 import seaborn as sns
@@ -29,7 +30,7 @@ clusterClasses = pd.DataFrame({"c1" :"OFF local, OS",        "c2":"OFF DS",
                                "c18":"ON-OFF DS 1",         "c19":"ON-OFF DS 2", 
                                "c20":"(ON-)OFF local, OS",  "c21":"ON step","c22":"ON DS trans", 
                                "c23":"ON local trans, OS",  "c24":"ON local trans, OS",
-                               "c25":"ON local trans, OS",  "26":"ON trans",
+                               "c25":"ON local trans, OS",  "c26":"ON trans",
                                "c27":"ON trans",            "c28":"ON trans large",
                                "c29":"ON high freq",        "c30":"ON low freq",
                                "c31":"ON sust",             "c32":"ON sust",
@@ -51,174 +52,227 @@ tree = cfs.get_folder_tree(rootFolder)
 fieldFolders=list()
 for file in tree:
     split = file.split("\\")
-    if ".h5" in split[-1]:
+    if "_panda" in split[-1]:
         folder = "\\".join(split[0:-1])
         fieldFolders.append(folder)
 
 #remove redundant info and make it a list
 fieldFolders = list(set(fieldFolders))
+fieldFolders =  [s for s in fieldFolders if "allFields" not in s]
+
 fh=None
 ax=None
 #run through all folders containing recordings
+
 for folder in fieldFolders:
+    print(folder)
     experimentTree = cfs.get_folder_tree(folder)
     experimentTree.sort()
+#    experimentTree = os.listdir(folder)+"\\Pre")
     #copy the contents of the folder    
     treeCopy = experimentTree[:]
     #run through all files in there
+    x=0
     for file in experimentTree:
+        print(file)
         fieldList=list()
         #split the complete path with "_" tag
         #this way one can separate files that came from the same field
         split = file.split("_")
         #run through the copy of the folder
+
         for sameField in treeCopy:
             #if the split path is the same beginning as the current file
-            if split[0] in sameField:
+            if split[1] in sameField:
                 #append this filepath to list
                 fieldList.append(sameField)
                 #and remove it from original tree to avoid redundance
                 experimentTree.pop(experimentTree.index(sameField))
-        #from here, analyse/plot fields
 
-    #get the filenames containing the responses to chirp and moving bar
-    chirpField = [s for s in fieldList if "chirp" in s]
-    dsField = [s for s in fieldList if "ds" in s and "dark" not in s]
-    bgField = [s for s in fieldList if "bg" in s]
 
-    responseFields = [chirpField[0], dsField[0]]
+        #get the filenames containing the responses to chirp and moving bar
+        chirpField = [s for s in fieldList if "chirp" in s]
+        dsField = [s for s in fieldList if "ds" in s and "dark" not in s]
+        bgField = [s for s in fieldList if "bg" in s]
+        noiseField = [s for s in fieldList if "noise" in s and "cnoise" not in s]
 
-    #get a list of cells that had a minimal quality. In this case a response index above 
-    #0.45 for chirp or 0.6 for the moving bars
-    cleanListChirp,qualChirp = cfs.clean_field(filePath=responseFields[0],minQual=0.45)
-    cleanListDs,qualDS  = cfs.clean_field(filePath=responseFields[1],minQual=0.6)
-    cleanList = list(set(cleanListChirp + cleanListDs))
-    print("useful data: " +str(len(cleanList)/len(qualChirp)*100))
-    
-    majorTable = pd.DataFrame()             
-    for cell in cleanList:
-        index=list()
-        columns=list()
-        toframe = list()
-        
-        data = pd.read_hdf(chirpField[0],cell)
-        data = data.transpose()
-        
-        index.append(cell[1:])
-        
-        columns.append("area")
-        toframe.append(data["area_um"].dropna().values[0][0])
-        
-        columns.append("chirp_qual")
-        toframe.append(data["qualIndex"].values[0][0])
-        
-        ffi = data["qualIndex"].values[0][0]
+        responseFields = [chirpField[0], dsField[0]]
 
-        columns.append("clus_corr1")
-        toframe.append(data["clusCorrs"].values[0][0])
-            
-        columns.append("cluster1")
-        toframe.append(data["clusIndx"].values[0][0])
-            
-        columns.append("clus_corr2")
-        toframe.append(data["clusCorrs"].values[1][0])
-            
-        columns.append("cluster2")
-        toframe.append(data["clusIndx"].values[1][0])
-            
-        data = pd.read_hdf(dsField[0],cell)
-        data = data.transpose()
+        #get a list of cells that had a minimal quality. In this case a response index above 
+        #0.45 for chirp or 0.6 for the moving bars
+        cleanListChirp,qualChirp = cfs.clean_field(filePath=responseFields[0],minQual=0.45)
+        cleanListDs,qualDS  = cfs.clean_field(filePath=responseFields[1],minQual=0.6)
+        cleanList = list(set(cleanListChirp + cleanListDs))
+#        print("useful data: " +str(len(cleanList)/len(qualChirp)*100))
+        ident = responseFields[0].split("\\")
         
-        columns.append("ds_qual")
-        toframe.append(data["qualIndex"].values[0][0])
-        
-        ffi = (data["qualIndex"].values[0][0]-ffi)/(data["qualIndex"].values[0][0]+ffi)    
-        columns.append("full_field_index")
-        toframe.append(ffi)
-        
-        columns.append("dir_selec")
-        toframe.append(data["dirSelec"].values[0][0])
+        majorTable = pd.DataFrame()             
+        for cell in cleanList:
             
-        columns.append("ds_p_value")
-        toframe.append(data["ds_stat_signif"].values[0][0])
+            index=list()
+            columns=list()
+            toframe = list()
             
-        if data["ds_stat_signif"].values[0][0] <= 0.05:
-            ds=1
-        else:
-            ds=0
+            if len (chirpField) > 0:
+                data = pd.read_hdf(chirpField[0],cell)
+                data = data.transpose()
+            
+                ident1 = ident[-3]+"_"+ident[-2]+"_"+cell[1:]
+                index.append(ident1)
+            
+            
+                columns.append("path")
                 
-        columns.append("ds")
-        toframe.append(ds)
+                path = fieldList[0]
+                toframe.append(path[0:path.rfind("-")+3])
+            
+                columns.append("area")
+                toframe.append(data["area_um"].dropna().values[0])
+            
+                columns.append("chirp_qual")
+                toframe.append(data["qualIndex"].values[0])
+            
+                ffi = data["qualIndex"].values[0]
+    
+                columns.append("clus_corr1")
+                toframe.append(data["clusCorrs"].values[0])
+                
+                columns.append("cluster1")
+                toframe.append(data["clusIndx"].values[0])
+                    
+                columns.append("clus_corr2")
+                toframe.append(data["clusCorrs"].values[1])
+                
+                columns.append("cluster2")
+                toframe.append(data["clusIndx"].values[1])
+                
+                columns.append("chirp_median_trace")
+                toframe.append(data["medianTrace"].dropna().values)
+                
+            if len (dsField) > 0:
+                data = pd.read_hdf(dsField[0],cell)
+                data = data.transpose()
+                
+                columns.append("ds_qual")
+                toframe.append(data["qualIndex"].values[0])
+                
+                ffi = (data["qualIndex"].values[0]-ffi)/(data["qualIndex"].values[0]+ffi)    
+                columns.append("full_field_index")
+                toframe.append(ffi)
         
-        columns.append("on_off")
-        toframe.append(data["ooi"].values[0][0])
+                columns.append("dir_selec")
+                toframe.append(data["dirSelec"].values[0])
+                
+                columns.append("ds_p_value")
+                toframe.append(data["ds_stat_signif"].values[0])
+                
+                if data["ds_stat_signif"].values[0] <= 0.05:
+                    ds=1
+                else:
+                    ds=0
+                
+                columns.append("ds")
+                toframe.append(ds)
+                
+                columns.append("directions")
+                toframe.append(data.directions.dropna())
+                
+                columns.append("direction_vector")
+                toframe.append(data.direction_vector.dropna())
+                
+                columns.append("ooi")
+                toframe.append(data["ooi"].values[0])
+                
+                columns.append("ds_median_trace")
+                toframe.append(data["medianTrace"].dropna().values)
+                
+            if len (bgField) > 0:
+                data = pd.read_hdf(bgField[0],cell)
+                data = data.transpose()
         
-        data = pd.read_hdf(bgField[0],cell)
-        data = data.transpose()
+                columns.append("color_on_index")
+                toframe.append(data["colorOnInd"].values[0])
         
-        columns.append("color_on_index")
-        toframe.append(data["colorOnInd"].values[0][0])
+                columns.append("color_off_index")
+                toframe.append(data["colorOffInd"].values[0])
+                
+                columns.append("bg_median_trace")
+                toframe.append(data["medianTrace"].dropna().values)
+                
+#            if len(noiseField) > 0:
+#                
+#                data = pd.read_hdf(noiseField[1],cell)
+#                data = data.transpose()
         
-        columns.append("color_off_index")
-        toframe.append(data["colorOffInd"].values[0][0])
+            columns.append("abs_loc_x")
+            toframe.append(data["xcoord_um"].values[0])
         
-        columns.append("location x")
-        toframe.append(data["XCoord_um"].values[0][0])
+            columns.append("abs_loc_y")
+            toframe.append(data["ycoord_um"].values[0])
         
-        columns.append("location y")
-        toframe.append(data["YCoord_um"].values[0][0])
+
+            locations = ["nasal","temporal","dorsal","ventral"]
         
+            if "nasal" in data.keys():  
+                key="nasal"
+            elif "temporal" in data.keys():
+                key="temporal"
+            else:
+                key=[]
+            if len(key) !=0:
+                locations.pop(locations.index(key))
+                columns.append(key)
+                toframe.append(data[key].values[0])
+                columns.append(key+"_abs")
+                toframe.append(data[key+"_abs"].values[0])
         
-        majorTable =majorTable.append(pd.DataFrame(data=[toframe],
+            if "dorsal" in data.keys():  
+                key="dorsal"
+            elif "ventral" in data.keys():
+                key="ventral"
+            else:
+                key=[]
+            if len(key) !=0:
+                locations.pop(locations.index(key))
+                columns.append(key)
+                toframe.append(data[key].values[0])
+                columns.append(key+"_abs")
+                toframe.append(data[key+"_abs"].values[0])
+            
+            
+            columns.extend(locations)
+            toframe.extend([np.nan]*len(locations))
+        
+            locations = [s + "_abs" for s in locations]
+            columns.extend(locations)
+            toframe.extend([np.nan]*len(locations))
+            
+            majorTable =majorTable.append(pd.DataFrame(data=[toframe],
                                                columns=columns,
                                                index=index))
 
-
     
     
-    test = cfs.cluster_distribution(hdFilePath = responseFields[0], keys=cleanList)
-    labels,numbers,cells = cfs.get_cluster_histogram(test,plot=0)    
-    intLabels = [s.strip('c') for s in labels]
-    intLabels = list(map(int,intLabels))
+        day=folder.split("\\")[-2]
+        experiment = folder.split("\\")[-1]
+        hdStore1 = pd.HDFStore(rootFolder+"allFields\\"+day+"_"+experiment+".h5","a") 
+        hdStore1["field_"+str(x)] = majorTable
+        hdStore1.close()
+        x = x+1
     
-    data = pd.read_hdf(chirpField[0],cleanListChirp[0])
-    data = data.transpose()
-    loc=list()
-    if "ventral" in data.columns:
-        loc.append("ventral")
-    else:
-        loc.append("dorsal")
-    if "nasal" in data.columns:
-        loc.append("nasal")
-    else:
-        loc.append("temp")
-        
-    fieldx=data.loc["x"].dropna()
-    fieldy=data.loc["y"].dropna()
-    field = pd.DataFrame([fieldx,fieldy])
-#       data[loc[0]][loc[1]].dropna()
-        
-    color = [np.random.random(1)[0],np.random.random(1)[0],np.random.random(1)[0]]
-    print(field)
-    print("\n")
-        
-    fh,ax= cfs.plot_field_location(field=field,fh=fh,ax=ax,colour=color)
-
-    
-#            hdfStore = pd.HDFStore(dataPath+filePrefix+dataFile)
-#            keys = hdfStore.keys()
-#
-#            data = pd.read_hdf(dataPath+filePrefix+dataFile,keys[0])
-#            data = data.transpose()
-#
-#            hdfStore.close()
-
-
-
-
-           
-        
-
+#    fh,ax= cfs.plot_field_location(field=field,fh=fh,ax=ax,colour=color)
+       
 
 #tree.pop(tree.index(file))
 
+#import numpy as np
+#import pandas as pd
+#import searborn as sns
+#import matplotlib.pyplot as plt
+#import os
+#
+#
+#
+#hdStore = pd.HDFStore("Z:\\User\\Chagas\\analysisResults\\allFields\\20160921_1.h5","r")
+#keys=hdStore.keys()
+#data = hdStore["/field_0"]
