@@ -27,7 +27,7 @@ import copy
 
 sns.set_style("white")
 
-def avg_matrix(matrix=None,grouping=None):
+def avg_matrix(matrix=None, grouping=None):
     """function to get the average response to each variant of a certain stimulus
     (e.g. diferent movement directions of moving bars)
     An example on how the grouping list should be arranged:
@@ -42,14 +42,13 @@ def avg_matrix(matrix=None,grouping=None):
     """
     if grouping is not None:
         indices = grouping
-        dsRows = np.size(matrix,axis=0)
-        dsMatrix=np.zeros((dsRows,len(indices)))
-    
-        for j in range(0,len(indices)):          
-            meanDatum = np.mean(matrix[:,indices[j]],axis=1)
+        dsRows = np.size(matrix, axis=0)
+        dsMatrix = np.zeros((dsRows, len(indices)))
+
+        for j in range(0, len(indices)):
+            meanDatum = np.mean(matrix[:,indices[j]], axis=1)
             dsMatrix[:,j] = meanDatum
-    
-        
+
     else:
         dsMatrix = np.mean(matrix,axis=0)
     
@@ -458,17 +457,20 @@ def direction_selectivity(matrix=None):
     
     """    
     
-    #SVD analysis to determine direction and orientation selectivity
+    # SVD analysis to determine direction and orientation selectivity
     U,S,V = np.linalg.svd(matrix)
-    sv =  np.sign(np.mean(np.sign(V[:,0])))
-                
+
+    # ?
+    sv = np.sign(np.mean(np.sign(V[:,0])))
+
+    # ?
     if (np.mean((-1*U[:,0]-np.mean(matrix[:,0],axis=0))**2) < \
         np.mean((U[:,0]-np.mean(matrix[:,0],axis=0))**2)):
         
         su = -1
     else:
         su = 1
-                    
+    # ?
     if sv==1 and su==1:
         s = 1
     elif sv==-1 and su==-1:
@@ -479,18 +481,21 @@ def direction_selectivity(matrix=None):
         s = su
     else:
         s = 1
-                    
+
+    # Get normalized dsVector
     dsVector = s * V[:,0]
     dsVector = dsVector - np.min(dsVector)
-    dsVector = dsVector/max(dsVector)
-                
+    dsVector = dsVector / max(dsVector)
+
+    # Get normalized time component
     tc = s * U[:,0]
     tc = tc - np.mean(tc[0:7])
-    tc = tc/np.max(abs(tc))
-                
-    normResp = np.zeros(shape = np.shape(matrix))
-    for j in range(0,np.size(matrix,axis=1)):
-        normResp[:,j] = np.transpose(tc)*matrix[:,j]
+    tc = tc / np.max(abs(tc))
+
+    # Get normalized response
+    normResp = np.zeros(shape=np.shape(matrix))
+    for j in range(0, np.size(matrix, axis=1)):
+        normResp[:,j] = tc * matrix[:,j]
 
     return normResp,dsVector,tc
     
@@ -1531,31 +1536,39 @@ def process_bg(allData):
     
     return allData
     
-def process_ds(allData, sufix):
+def process_ds(allData, suffix):
     sampRate = allData.transpose()["sampRate"].dropna().values[0]
 
-    stim,tStim,directions,screendur = create_ds_stim(sampFreq=sampRate)
-    
-    indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
+    # Get DS stimulus info
+    [_, _, dirs, _] = create_ds_stim(sampFreq=sampRate)
+
+    # Convert bar direction angles from degrees to radians
+    dirsRad = np.deg2rad(dirs)
+
+    # Get trial idx for dirsDeg
+    dirIdx =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
               [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
+
     trials = ['trial{0}'.format(i) for i in range(1,25)]
 
-                           
     resMatrix = allData.transpose()[trials]
     resMatrix = resMatrix.dropna()
-                    
-    arr1inds = np.argsort(directions)
-    directions = np.array(directions)
-    directions = directions[arr1inds]
-                    
-                                        
-                    
-
     resMatrix = np.array(resMatrix)
-    dsMatrix = avg_matrix(matrix=resMatrix,grouping=indices)
-    dsMatrix = dsMatrix[:,arr1inds]
 
-#    qualMatrix = resMatrix[:,indices]
+    # Get direction average matrix (average response of each ROI per direction)
+    dsMatrix = avg_matrix(matrix=resMatrix, grouping=dirIdx)
+    dsMatrix = dsMatrix[:, arr1inds]
+
+    # Normalize direction average matrix
+    # NOTE: decide whether to use median or single trace scaling
+    dsMatrix = dsMatrix - np.median(dsMatrix[0:8, :], axis=0)
+    dsMatrix = dsMatrix / np.max(np.abs(np.median(dsMatrix, axis=1)))
+
+    # Sort responses by direction (NOTE: done after getting avg_matrix for now)
+    dsMatrix = dsMatrix[:, np.argsort(dirsRad)]
+    dirsRad = np.sort(dirsRad)
+
+#    qualMatrix = resMatrix[:,dirIdx]
 #    qi = list()
 #
 #    for i in range(np.size(qualMatrix,1)):
@@ -1570,24 +1583,19 @@ def process_ds(allData, sufix):
 
     trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
                  
-    tempDS = pd.DataFrame(dsMatrix,columns=trials)
+    tempDS = pd.DataFrame(dsMatrix, columns=trials)
     allData = allData.append(tempDS.transpose())
-                    
-    #normalize matrix mean matrix:
-                    
-    dsMatrix=dsMatrix/np.max(np.abs(np.median(dsMatrix,axis=1)))
-                
-    #SVD analysis to determine direction and orientation selectivity
-    normTrace,dsVector,tc = direction_selectivity(matrix=dsMatrix)
-    
-                    
+
+    # Compute direction selectivity of each ROI
+    # direction_selectivity uses Singular Value Decomposition (SVD)
+    [_, dsVector, tc] = direction_selectivity(matrix=dsMatrix)
+
     # make indices                    
     # DS/OS indices
-    #convert bar angles to radians
-    dirRad = np.deg2rad(directions)
+
                     
 
-    p,q,qdist = testTuningpy(dirs=dirRad, counts=dsMatrix, per=1) 
+    p,q,qdist = testTuningpy(dirs=dirsRad, counts=dsMatrix, per=1) 
                     
     allData = allData.append(pd.Series(p,name="ds_stat_signif"))
     allData = allData.append(pd.Series(q,name="projected_index"))
@@ -1596,34 +1604,34 @@ def process_ds(allData, sufix):
     allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
                     
     #get the vector size on direction selectivity
-    dsIndex = circ.resultant_vector_length(alpha=dirRad,w=dsVector,d=np.diff(dirRad))
+    dsIndex = circ.resultant_vector_length(alpha=dirsRad,w=dsVector,d=np.diff(dirsRad))
                                                    
     dsIndex = dsIndex[0]
     dsIndex = pd.Series(dsIndex,name="dirSelec")
         
     
     
-    dsVector1 = [x for (y,x) in sorted(zip(directions,dsVector))]
+    dsVector1 = [x for (y,x) in sorted(zip(dirsDeg,dsVector))]
     dsVector1.append(dsVector1[0])
-    directions = np.append(directions,360)
-#    directions.sort()
-#    directions.append(directions[0])
-    allData = allData.append(pd.Series(directions,name="directions"))
-#    del directions
+    dirsDeg = np.append(dirsDeg,360)
+#    dirsDeg.sort()
+#    dirsDeg.append(dirsDeg[0])
+    allData = allData.append(pd.Series(dirsDeg,name="directions"))
+#    del dirsDeg
                     
     allData = allData.append(pd.Series(dsVector1,name="direction_vector"))
                     
-    dirRad1=dirRad[:]
-    dirRad1 = np.append(dirRad1,dirRad1[0])
+    dirsRad1=dirsRad[:]
+    dirsRad1 = np.append(dirsRad1,dirsRad1[0])
                     
-    allData = allData.append(pd.Series(dirRad1,name="radians"))           
+    allData = allData.append(pd.Series(dirsRad1,name="radians"))           
                     
                     
     allData = allData.append(dsIndex)
                     
                 
     ## needs finishing for orientation selectivity
-    #    dsP = testTuning(dirRad,xx',1);
+    #    dsP = testTuning(dirsRad,xx',1);
     #    pref_dir = circ_mean(dir,x);                
     #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
     #    os_p = testTuning(dir,xx',2);
@@ -1646,7 +1654,7 @@ def process_ds(allData, sufix):
     allData = allData.append(ooi)
                 
     #stimulus
-#    stim,tStim,directions,screenDur= cfs.create_ds_stim(sampFreq=sampRate)
+#    stim,tStim,dirsDeg,screenDur= cfs.create_ds_stim(sampFreq=sampRate)
 #                
     stim = pd.Series(stim.flatten(),name="stimTrace")
     tStim = pd.Series(tStim,name="stimVector")
@@ -1657,7 +1665,7 @@ def process_ds(allData, sufix):
     return allData
     
 def process_chirp(allData,natureData):
-    sufix="chirp"
+    suffix="chirp"
     sampRate = allData.transpose()["sampRate"].dropna().values[0]
     tempNatData  = natureData.copy()
 
@@ -1666,7 +1674,7 @@ def process_chirp(allData,natureData):
                                                   
     corr,corrClus,clusTrace = n_max_correlations(medianTrace,tempNatData,5)
     
-    ind = [sufix]*len(corrClus)    
+    ind = [suffix]*len(corrClus)    
     ind = [corrClus,ind]
     ind = list(zip(*ind))
     try:
