@@ -116,8 +116,10 @@ for folder in fieldFolders:
             if len (chirpField) > 0:
                 data = pd.read_hdf(chirpField[0],cell)
                 data = data.transpose()
-            
-                ident1 = ident[-3]+"_"+ident[-2]+"_"+cell[1:]
+                ident1 = ident[-1]
+                ident1 = ident1[ident1.find("_")+1:]
+                ident1 = ident1[0:ident1.find("_")]
+                ident1 = ident[-3]+"_"+ident[-2]+"_"+ident1+"_"+cell[1:]
                 index.append(ident1)
             
             
@@ -250,8 +252,6 @@ for folder in fieldFolders:
             majorTable =majorTable.append(pd.DataFrame(data=[toframe],
                                                columns=columns,
                                                index=index))
-
-    
     
         day=folder.split("\\")[-2]
         experiment = folder.split("\\")[-1]
