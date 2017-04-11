@@ -23,8 +23,8 @@
       <file leaf-file-name="classFuncs.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/classFuncs.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="834">
-              <caret line="497" column="26" selection-start-line="497" selection-start-column="26" selection-end-line="497" selection-end-column="26" />
+            <state relative-caret-position="669">
+              <caret line="1548" column="25" selection-start-line="1548" selection-start-column="25" selection-end-line="1548" selection-end-column="25" />
               <folding>
                 <element signature="e#105#136#0" expanded="true" />
               </folding>
@@ -289,7 +289,16 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/classFuncs.py</url>
+          <line>1400</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="2" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -328,8 +337,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/classFuncs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="834">
-          <caret line="497" column="26" selection-start-line="497" selection-start-column="26" selection-end-line="497" selection-end-column="26" />
+        <state relative-caret-position="669">
+          <caret line="1548" column="25" selection-start-line="1548" selection-start-column="25" selection-end-line="1548" selection-end-column="25" />
           <folding>
             <element signature="e#105#136#0" expanded="true" />
           </folding>

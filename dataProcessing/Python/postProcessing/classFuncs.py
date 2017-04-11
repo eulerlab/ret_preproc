@@ -489,7 +489,7 @@ def direction_selectivity(matrix=None):
 
     # Get normalized time component
     tc = s * U[:,0]
-    tc = tc - np.mean(tc[0:7])
+    tc = tc - np.mean(tc[0:6])
     tc = tc / np.max(abs(tc))
 
     # Get normalized response
@@ -497,7 +497,7 @@ def direction_selectivity(matrix=None):
     for j in range(0, np.size(matrix, axis=1)):
         normResp[:,j] = tc * matrix[:,j]
 
-    return normResp,dsVector,tc
+    return normResp, dsVector, tc
     
 def field_loc(ODseries,filePath="",pattern=pd.Series({"-x":"dorsal",
                                                       "+x":"ventral",
@@ -1374,7 +1374,7 @@ def trace2trial(trace=None,triggerTime=None,triggerMode=1,triggerInd=None):
 
 
 
-def testTuningpy(dirs,counts,per):
+def testTuningpy(dirs, counts, per):
     """
     Created on Fri Aug 19 10:23:32 2016
     testTuningpy is a translation to python for the matlab function "testTuning",
@@ -1392,46 +1392,31 @@ def testTuningpy(dirs,counts,per):
         
     @author: Andre M Chagas
     """
-    itera = 1000
-
-    counts1 = copy.deepcopy(counts)
-    c = np.shape(counts1)
+    iter = 1000  # Set number of iterations
+    c = np.shape(counts)
     k = copy.deepcopy(dirs)
-    
-    v = np.exp(per*np.multiply(np.complex(0,1),k))
-    v = v/np.sqrt(c[0])
-#    if len(v)>len(counts1):    
-#        q = np.abs(np.mean(counts1*v[0:-1]))
-#    elif len(counts1)>len(v):
-#        q = np.abs(np.mean(counts1[0:-1]*v))
-#    else:
-    q = np.abs(np.mean(counts1*v))
-    #q = q[0]
-    qdistr = np.zeros(shape=(itera,1))
+    counts1 = copy.deepcopy(counts) # Copy due to permutation later
+
+    # Complex exponential projection
+    v = np.exp(per * 1j * k) / np.sqrt(c[1])
+    q = np.abs(np.inner(np.mean(counts1, axis=0), v))
+
+    # Make q-distribution by permuting trials, and get p-value as the percentile of the actual q value
+    qdistr = np.zeros(shape=(iter, 1))
     counts1 = np.transpose(counts1)
-    
-    np.random.seed(seed=1)
-    for j in range(itera):
-        #r = np.random.randint(low=0,high=(c[0]*c[1])+1,size=(c[0],c[1]))
-        #counts=[counts[z] for z in r]  
+    # np.random.seed(seed=1) # Fix seed
+    for j in range(iter):
 
-        
+        # Shuffle trials (preserving time structure within trial)
         np.random.shuffle(counts1)
-        
-        
-        #counts1 = counts1.reshape(c)
-#        if len(v)>len(counts1):    
-#            temp = np.abs(np.mean(counts1*v[0:-1]))
-#        elif len(counts1)>len(v):
-#            temp = np.abs(np.mean(counts1[0:-1]*v))
-#        else:
-        temp = np.abs(np.mean(np.transpose(counts1)*v))
+        # Project shuffled trials onto complex exponential
+        qTmp = np.abs(np.inner(np.mean(counts1.T, axis=0), v))
+        # Insert into q-distribution
+        qdistr[j] = qTmp
 
-        
-        qdistr[j] =temp
-    p = np.mean(qdistr>q)
+    p = np.mean(qdistr >= q)
     
-    return p,q,qdistr
+    return p, q, qdistr
 
   
 
@@ -1549,7 +1534,7 @@ def process_ds(allData, suffix):
     dirIdx =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
               [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
 
-    trials = ['trial{0}'.format(i) for i in range(1,25)]
+    trials = ['trial{0}'.format(i) for i in range(1,25)] # ?
 
     resMatrix = allData.transpose()[trials]
     resMatrix = resMatrix.dropna()
@@ -1559,7 +1544,7 @@ def process_ds(allData, suffix):
     dsMatrix = avg_matrix(matrix=resMatrix, grouping=dirIdx)
     dsMatrix = dsMatrix[:, arr1inds]
 
-    # Normalize direction average matrix
+    ## Normalize direction average matrix
     # NOTE: decide whether to use median or single trace scaling
     dsMatrix = dsMatrix - np.median(dsMatrix[0:8, :], axis=0)
     dsMatrix = dsMatrix / np.max(np.abs(np.median(dsMatrix, axis=1)))
@@ -1586,31 +1571,26 @@ def process_ds(allData, suffix):
     tempDS = pd.DataFrame(dsMatrix, columns=trials)
     allData = allData.append(tempDS.transpose())
 
-    # Compute direction selectivity of each ROI
+
+    ## Get direction selectivity vector of each ROI
     # direction_selectivity uses Singular Value Decomposition (SVD)
-    [_, dsVector, tc] = direction_selectivity(matrix=dsMatrix)
+    [normResp, dsVector, tc] = direction_selectivity(matrix=dsMatrix)
 
-    # make indices                    
-    # DS/OS indices
-
-                    
-
-    p,q,qdist = testTuningpy(dirs=dirsRad, counts=dsMatrix, per=1) 
-                    
-    allData = allData.append(pd.Series(p,name="ds_stat_signif"))
-    allData = allData.append(pd.Series(q,name="projected_index"))
-                    
-                
-    allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
-                    
-    #get the vector size on direction selectivity
-    dsIndex = circ.resultant_vector_length(alpha=dirsRad,w=dsVector,d=np.diff(dirsRad))
-                                                   
+    ## Get Direction Selectivity Index (DSI) (the vector size on direction selectivity)
+    dsIndex = circ.resultant_vector_length(alpha=dirsRad, w=dsVector, d=np.diff(dirsRad)[0:2])
     dsIndex = dsIndex[0]
     dsIndex = pd.Series(dsIndex,name="dirSelec")
-        
-    
-    
+                    
+    ## Get direction selectivity p-value using permutation test
+    # Q: use dsMatrix or single traces? multiply my tc
+    [p, q, qdist] = testTuningpy(dirs=dirsRad, counts=normResp, per=1)
+
+
+
+    allData = allData.append(pd.Series(p,name="ds_stat_signif"))
+    allData = allData.append(pd.Series(q,name="projected_index"))
+    allData = allData.append(pd.Series(qdist.flatten(),name="ds_shuff_projected_dist"))
+
     dsVector1 = [x for (y,x) in sorted(zip(dirsDeg,dsVector))]
     dsVector1.append(dsVector1[0])
     dirsDeg = np.append(dirsDeg,360)
@@ -1618,15 +1598,12 @@ def process_ds(allData, suffix):
 #    dirsDeg.append(dirsDeg[0])
     allData = allData.append(pd.Series(dirsDeg,name="directions"))
 #    del dirsDeg
-                    
     allData = allData.append(pd.Series(dsVector1,name="direction_vector"))
                     
     dirsRad1=dirsRad[:]
     dirsRad1 = np.append(dirsRad1,dirsRad1[0])
                     
-    allData = allData.append(pd.Series(dirsRad1,name="radians"))           
-                    
-                    
+    allData = allData.append(pd.Series(dirsRad1,name="radians"))
     allData = allData.append(dsIndex)
                     
                 
