@@ -1531,7 +1531,7 @@ def process_ds(allData, suffix):
     TODO:
         - make function sorting trials by condition and direction
             > facilitates all processes downstream
-        - check if need to normalize single trials
+        - check if need to normalize single trials if not using snippets
     """
     sampRate = allData.transpose()["sampRate"].dropna().values[0]
 
