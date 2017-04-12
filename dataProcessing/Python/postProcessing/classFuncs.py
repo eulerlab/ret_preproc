@@ -454,7 +454,8 @@ def direction_selectivity(matrix=None):
             directive selection vector
         tc:
            time component  
-    
+
+    TODO: debug difference between sorted vs unsorted input matrix (should be sorted)
     """    
     
     # SVD analysis to determine direction and orientation selectivity
@@ -492,12 +493,12 @@ def direction_selectivity(matrix=None):
     tc = tc - np.mean(tc[0:6])
     tc = tc / np.max(abs(tc))
 
-    # Get normalized response
-    normResp = np.zeros(shape=np.shape(matrix))
-    for j in range(0, np.size(matrix, axis=1)):
-        normResp[:,j] = tc * matrix[:,j]
+    # Project activity onto tc
+    # For example, the inner product of a matrix [time, condition] of condition-averaged activity traces
+    # with a tc vector [time,0] produces a vector [condition,0] of scalars
+    tcProj = np.inner(matrix.T, tc)
 
-    return normResp, dsVector, tc
+    return dsVector, tc, tcProj
     
 def field_loc(ODseries,filePath="",pattern=pd.Series({"-x":"dorsal",
                                                       "+x":"ventral",
@@ -1374,16 +1375,16 @@ def trace2trial(trace=None,triggerTime=None,triggerMode=1,triggerInd=None):
 
 
 
-def testTuningpy(dirs, counts, per):
+def testTuning(dirs, counts, per):
     """
     Created on Fri Aug 19 10:23:32 2016
-    testTuningpy is a translation to python for the matlab function "testTuning",
+    testTuning is a translation to python for the matlab function "testTuning",
     originally developed in 2014 by Alexander Ecker and Philipp Berens
     Input:
-        dirs: vector of directions (#directions x 1)
-        counts: matrix of spike counts as returned by getSpikeCounts.
-        per: fourier component to test (1 = direction, 2 =
-                   orientation)   
+        dirs:   vector of directions (#directions x 1)
+        counts: matrix of projection scalars of activity traces onto time components [trial, condition],
+                as ouput by direction_selectivity()
+        per:    fourier component to test (1 = direction, 2 = orientation)
     
     Output:  
         p:      p-value
@@ -1392,25 +1393,29 @@ def testTuningpy(dirs, counts, per):
         
     @author: Andre M Chagas
     """
-    iter = 1000  # Set number of iterations
-    c = np.shape(counts)
+    iter = 10000  # Set number of iterations
+    [N, M] = np.shape(counts)
     k = copy.deepcopy(dirs)
     counts1 = copy.deepcopy(counts) # Copy due to permutation later
 
     # Complex exponential projection
-    v = np.exp(per * 1j * k) / np.sqrt(c[1])
+    v = np.exp(per * 1j * k) / np.sqrt(M)
     q = np.abs(np.inner(np.mean(counts1, axis=0), v))
 
     # Make q-distribution by permuting trials, and get p-value as the percentile of the actual q value
     qdistr = np.zeros(shape=(iter, 1))
-    counts1 = np.transpose(counts1)
+    # counts1 = np.transpose(counts1)
     # np.random.seed(seed=1) # Fix seed
     for j in range(iter):
 
-        # Shuffle trials (preserving time structure within trial)
+        # Shuffle trial labels
+        # np.random.shuffle(counts1)
+        counts1 = counts1.flatten()
         np.random.shuffle(counts1)
+        counts1 = counts1.reshape((N, M))
+
         # Project shuffled trials onto complex exponential
-        qTmp = np.abs(np.inner(np.mean(counts1.T, axis=0), v))
+        qTmp = np.abs(np.inner(np.mean(counts1, axis=0), v))
         # Insert into q-distribution
         qdistr[j] = qTmp
 
@@ -1522,20 +1527,29 @@ def process_bg(allData):
     return allData
     
 def process_ds(allData, suffix):
+    """
+    TODO:
+        - make function sorting trials by condition and direction
+            > facilitates all processes downstream
+        - check if need to normalize single trials
+    """
     sampRate = allData.transpose()["sampRate"].dropna().values[0]
 
     # Get DS stimulus info
     [_, _, dirs, _] = create_ds_stim(sampFreq=sampRate)
 
+
+    ## TODO: make function sorting trials by condition and direction here
+
+
     # Convert bar direction angles from degrees to radians
     dirsRad = np.deg2rad(dirs)
 
     # Get trial idx for dirsDeg
-    dirIdx =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
-              [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
+    dirIdx =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],[4,12,20],[5,13,21],[6,14,22],[7,15,23]]
 
-    trials = ['trial{0}'.format(i) for i in range(1,25)] # ?
-
+    # ?
+    trials = ['trial{0}'.format(i) for i in range(1,25)]
     resMatrix = allData.transpose()[trials]
     resMatrix = resMatrix.dropna()
     resMatrix = np.array(resMatrix)
@@ -1549,43 +1563,56 @@ def process_ds(allData, suffix):
     dsMatrix = dsMatrix - np.median(dsMatrix[0:8, :], axis=0)
     dsMatrix = dsMatrix / np.max(np.abs(np.median(dsMatrix, axis=1)))
 
-    # Sort responses by direction (NOTE: done after getting avg_matrix for now)
+    # Sort trial traces by condition and direction (used for testtuning)
+    resMatrixSort = resMatrix[:, dirIdx]  # (32, 8, 3) = (time, condition, trial)
+    resMatrixSort = resMatrixSort[:, np.argsort(dirsRad), :]
+
+    # Sort avg responses by direction (NOTE: done after getting avg_matrix for now)
     dsMatrix = dsMatrix[:, np.argsort(dirsRad)]
+
+    # Sort direction vector itself
     dirsRad = np.sort(dirsRad)
 
-#    qualMatrix = resMatrix[:,dirIdx]
-#    qi = list()
-#
-#    for i in range(np.size(qualMatrix,1)):
-#        tem1,tem2 = cfs.response_quality_index(stimMatrix=qualMatrix[:,i,:])
-#        qi.append(tem1)
-#                        
-#    qi = np.max(qi)
-#    minIdx = tem2
-#                    
-#    allData = allData.append(pd.Series(qi,name = "qualIndex"))
-#    allData = allData.append(pd.Series(minIdx,name = "minIndex"))
-
-    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]              
-                 
+    trials = ['avgTrial{0}'.format(i) for i in range(1,9)]
     tempDS = pd.DataFrame(dsMatrix, columns=trials)
     allData = allData.append(tempDS.transpose())
 
 
-    ## Get direction selectivity vector of each ROI
+    ## Get direction selectivity vector
     # direction_selectivity uses Singular Value Decomposition (SVD)
-    [normResp, dsVector, tc] = direction_selectivity(matrix=dsMatrix)
+    [dsVector, tc, _] = direction_selectivity(matrix=dsMatrix)
+
+    # Get projection of time-component onto traces using SVD for tuning significance test
+    tcProj = np.inner(resMatrixSort[:,:,:].T, tc)
 
     ## Get Direction Selectivity Index (DSI) (the vector size on direction selectivity)
     dsIndex = circ.resultant_vector_length(alpha=dirsRad, w=dsVector, d=np.diff(dirsRad)[0:2])
     dsIndex = dsIndex[0]
     dsIndex = pd.Series(dsIndex,name="dirSelec")
-                    
+
     ## Get direction selectivity p-value using permutation test
     # Q: use dsMatrix or single traces? multiply my tc
-    [p, q, qdist] = testTuningpy(dirs=dirsRad, counts=normResp, per=1)
+    [p, q, qdist] = testTuning(dirs=dirsRad, counts=tcProj, per=1)
 
+    ## needs finishing for orientation selectivity
+    #    dsP = testTuning(dirsRad,xx',1);
+    #    pref_dir = circ_mean(dir,x);
+    #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
+    #    os_p = testTuning(dir,xx',2);
+    #    pref_ori = circ_mean(2*dir,x);
 
+    #    qualMatrix = resMatrix[:,dirIdx]
+    #    qi = list()
+    #
+    #    for i in range(np.size(qualMatrix,1)):
+    #        tem1,tem2 = cfs.response_quality_index(stimMatrix=qualMatrix[:,i,:])
+    #        qi.append(tem1)
+    #
+    #    qi = np.max(qi)
+    #    minIdx = tem2
+    #
+    #    allData = allData.append(pd.Series(qi,name = "qualIndex"))
+    #    allData = allData.append(pd.Series(minIdx,name = "minIndex"))
 
     allData = allData.append(pd.Series(p,name="ds_stat_signif"))
     allData = allData.append(pd.Series(q,name="projected_index"))
@@ -1605,16 +1632,6 @@ def process_ds(allData, suffix):
                     
     allData = allData.append(pd.Series(dirsRad1,name="radians"))
     allData = allData.append(dsIndex)
-                    
-                
-    ## needs finishing for orientation selectivity
-    #    dsP = testTuning(dirsRad,xx',1);
-    #    pref_dir = circ_mean(dir,x);                
-    #    os_index = circ_r(2*dir,x,2*diff(dir(1:2)));
-    #    os_p = testTuning(dir,xx',2);
-    #    pref_ori = circ_mean(2*dir,x);                
-                
-
 
     ########ON OFF INDEX --> OOI ######
     onPix=dsMatrix[0:4,:]
