@@ -35,7 +35,6 @@ import classFuncs as cfs
 
 #load data from nature paper
 natureFile = "Z:\\User\\Chagas\\nature2016_RGCs\\2016_clusters.mat"
-#natureFile = "E:\\2016_nature_paper\\2016_clusters.mat"
 natureData = matlab.loadmat(natureFile)
 
 dbPath = "Z:\\Data\\Chagas\\"
@@ -48,7 +47,7 @@ experimentList=[#"20161102\\1\\","20170119\\1\\",
                 #"20160927\\1\\","20161005\\2\\",
                 #"20161017\\1\\","20161011\\1\\",
                 #"20170217\\1\\","20170221\\1\\",
-                "20170223\\2\\","20170223\\1\\",                
+                "20170223\\2\\",#"20170223\\1\\",                
                 #"20161026\\1\\","20161102\\1\\",
                 #"20170119\\1\\", 
                  ]
@@ -105,7 +104,12 @@ for folder in experimentList:
             experimentIni = filePrefix[0:filePrefix.index("\\Pre")+1]
             experimentIni = cfs.get_folder_tree(experimentIni)
             experimentIni = experimentIni[".ini" in experimentIni]
-
+            
+            date = experimentIni.split("\\")
+            date = date[3]
+#            year = date[0:4]
+#            month = date[4:6]
+#            day = date[6:]
             #grab only the ones related to coordinate recording (edges + optic disk)
             coorList = [s for s in fileList if "loc" in s]
     
@@ -147,7 +151,8 @@ for folder in experimentList:
                              
         #get all traces
             allTraces = data["Traces0_raw"]
-            allTraces = allTraces.transpose()
+            allTraces = allTraces.sort_index()
+#            allTraces = allTraces.transpose()
             dim=1
         
         #get OS_parameter dict
@@ -176,7 +181,7 @@ for folder in experimentList:
            
             hdStore = pd.HDFStore(storeName,"w") 
 #%%   
-            for i in range(0,np.size(allTraces,dim)):
+            for i,roi in enumerate(allTraces.index):#range(0,np.size(allTraces,dim)):
 #        for i in [33,40,55,57,30,65,25,46,62,31,52,2,27,9,24,60,59,22,64,14,44,20,17,43,53,19,21]:
                 temp = "cell"+str(i+1)
                 print(temp) 
@@ -186,17 +191,17 @@ for folder in experimentList:
                 samp = pd.Series(sampRate,name="sampRate")
                 stimDel = pd.Series(stimDel,name="stimulator_delay")      
                 
-            #set the index to call from the roi dictionary
-                if i+1 < 10:
-                    indx="00"+str(i+1)
-                elif i+1 < 100:
-                    indx="0"+str(i+1)
-                else:
-                    indx=str(i+1) 
+#            #set the index to call from the roi dictionary
+#                if i+1 < 10:
+#                    indx="00"+str(i+1)
+#                elif i+1 < 100:
+#                    indx="0"+str(i+1)
+#                else:
+#                    indx=str(i+1) 
 
 
                 if "noise" not in  filePrefix and "cnoise" not in filePrefix:
-                    if "chirp" in filePrefix or "bg" in filePrefix or "spot" in filePrefix:
+                    if "chirp" in filePrefix  or "spot" in filePrefix:#or "bg" in filePrefix
                         trig = 2
                         flag = 1
                     else:
@@ -206,7 +211,7 @@ for folder in experimentList:
                     trig = 1
                     flag = 0
 
-                rawTrace = allTraces["ROI"+indx]
+                rawTrace = allTraces.loc[roi]
         
                 traceTime = data["Tracetimes0"][i,:]
                 triggerTime = data["Triggertimes"]
@@ -226,8 +231,13 @@ for folder in experimentList:
                 allData = allData.append(fieldx)
                 allData = allData.append(fieldy)
                 allData = allData.append(quadrant)
+                allData = allData.append(pd.Series(date, name = "date"))
+#                allData = allData.append(pd.Series(year,name = "year"))
+#                allData = allData.append(pd.Series(month,name = "month"))
+#                allData = allData.append(pd.Series(day,name = "day"))
 #%%         
                 if "bg" in filePrefix and bgFlag is True:
+                    
                     allData = cfs.process_bg(allData)
              
 #%%            
