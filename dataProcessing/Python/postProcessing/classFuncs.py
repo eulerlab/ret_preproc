@@ -20,6 +20,8 @@ import pycircstat as circ
 import peakutils as pk
 from configparser import ConfigParser
 import copy
+import fnmatch
+import datetime
 os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\load_after_igor_processing")
 import ImportPreprocessedData as ipd
 
@@ -190,16 +192,23 @@ def create_trigger_trace(trace,traceTime,triggerTime):
     triggerInd=list()
     for time1 in triggerTime:
         #print(time1)
+        #find all values where the trigger time point was bigger or the same as the time of the
+        #recorded signal
         dummie = np.where(time1>=traceTime)
+        #if there was at least one value that corresponds to the above condition
         try:
+            #grab the last value
             dummie = dummie[0][-1]
+            #add to list
             triggerInd.append(dummie)
+            #set the trigger trace to one at the correspondent index
             trigger[dummie]=1
+        
+        #if no values satisfied the inequality
         except IndexError:
+            #print a message    
             print ("trigger before traceTime")
-    
-    
-
+    #return the trigger indexes (referent to the raw trace) and a array of zeros and ones
     return trigger,triggerInd
 
 def create_2d_gaussian_window(rows,columns,sd):
@@ -567,7 +576,7 @@ def get_labels(label="trial",dataFrame=None):
             outLabels.append(key)
     return outLabels
     
-def get_color_resp_max_value(respMatrix=None,interval=[5,10]):
+def get_color_resp_max_value(respMatrix=None,interval=[9,19]):
     """"""    
     respMatrix=respMatrix[interval[0]:interval[1],:]
     maxVal=np.max(respMatrix**2)
@@ -772,7 +781,7 @@ def n_max_correlations(trace,dictionary,n_max):
     allCorr = list()
     allClus = list()
     allClusTrace = list()
-    corr=-1
+    corr=-100
     corrClus=""
     clusTrace = 0
     keyUsed=list()
@@ -787,7 +796,7 @@ def n_max_correlations(trace,dictionary,n_max):
             if key[0] =="c" and key not in keyUsed:
                 dummie2 = dictionary[key]["chirpMean"][0][0][0]
                 #normalize cluster trace so they max(|trace|)=1
-                dummie2 = normalize(dummie2)                
+#                dummie2 = normalize(dummie2)                
 
                 #get the correlation at zero lag
                 tempCorr = np.correlate(trace,dummie2,"same")
@@ -1067,15 +1076,24 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
         
 #        triggerTrace,triggerInd = create_trigger_trace(resTrace,traceTime,triggerTime)
         
-        resMatrix = trace2trial(trace=resTrace,
+#        resMatrix = trace2trial(trace=resTrace,
+#                                triggerTime=triggerTime,
+#                                triggerMode=trigMode,
+#                                triggerInd=triggerInd)
+
+        resMatrix = trace2trial(trace=rawTrace,
                                 triggerTime=triggerTime,
                                 triggerMode=trigMode,
-                                triggerInd=triggerInd) 
+                                triggerInd=triggerInd)
+        
+        resMatrix = resMatrix - np.median(resMatrix[0:8,:],axis=0)
+        
+        #filter out nans
         
 #        for i in range (np.size(resMatrix,1)):
 #           resMatrix[:,i]=resMatrix[:,i]-resMatrix[0,i]
             
-        resMatrix = resMatrix/np.max(np.abs(np.median(resMatrix,axis=1)))
+        resMatrix = resMatrix/np.max(np.abs(np.nanmedian(resMatrix,axis=1)))
         
 #        resMatrix = resMatrix-np.repeat(resMatrix[0,:],repeats=258,axis=0)
 #        resMatrix = np.transpose(resMatrix)
@@ -1129,7 +1147,7 @@ def raw2panda(rawTrace,traceTime, triggerTime,trigMode,
         allData = pd.DataFrame(resTrace)
         allData = allData.transpose()
         
-        triggerTrace,triggerInd = create_trigger_trace(rawTrace,traceTime,triggerTime)
+#        triggerTrace,triggerInd = create_trigger_trace(rawTrace,traceTime,triggerTime)
         triggerInd = pd.Series(triggerInd,name="trigInd")
         allData = allData.append(triggerInd)
         taxis = np.linspace(0,int(len(rawTrace)/sampRate),len(rawTrace))
@@ -1358,16 +1376,25 @@ def trace2trial(trace=None,triggerTime=None,triggerMode=1,triggerInd=None):
     #add one last value to the triggerInd to cycle through the trace easier
     add = triggerInd[-1]+cols
     triggerInd.append(add)
-    trials = np.zeros(shape=(rows,cols))
+    trials = np.zeros(shape=(rows,cols+8))+np.nan
     
     #run through all triggers.
     for i in range(1,rows+1):
-        if (triggerInd[i])-(triggerInd[i-1])==cols:
-            temp = trace[triggerInd[i-1]:triggerInd[i]]
+        if (triggerInd[i])-(triggerInd[i-1]-7)==cols:
+            temp = trace[triggerInd[i-1]-7:triggerInd[i]]
         else:
-            temp = trace[triggerInd[i-1]:triggerInd[i]+1]
+            temp = trace[triggerInd[i-1]-7:triggerInd[i]+1]
         trials[i-1,0:len(temp)] = temp[:]
+    
+    
+    #if there are nans in the traces, fill them with the previous value
+    for i, trace in enumerate(trials):
+       indexes =  np.where(np.isnan(trace)) 
+       if len(indexes[0])>0:
+           trials[i,indexes[0]] = trials[i,indexes[0]-1]
+           
     trials=np.transpose(trials)
+    
     return trials
 
 
@@ -1496,32 +1523,51 @@ def remove_nans(array=None):
 
 
 def process_bg(allData):
-    sampRate = allData.transpose()["sampRate"].dropna().values[0]
-    trials = ['trial{0}'.format(i) for i in range(1,4)]                           
-    resMatrix = np.array(allData.transpose()[trials])
-    notNans = ~np.isnan(resMatrix)                
-    indx,indy = np.where(notNans==True)
-    resMatrix = resMatrix[0:max(indx)+1,:]
-    stim,tStim,_ = create_bg_stim(sampFreq=sampRate, greenFirst = 1)
+    
+    filtered = fnmatch.filter(allData.index, 'trial?')
+    
+    trials = ['trial{0}'.format(i) for i in range(1,len(filtered)+1)]                           
+    resMatrix = allData.loc[trials]
+    resMatrix = resMatrix.transpose().dropna()
+    date = datetime.datetime.strptime(allData.loc["date"].values[0][0], "%Y%m%d").date()               
+    compDate = datetime.datetime.strptime("20160802", "%Y%m%d").date()
+    
+    if  date > compDate:
+        greenF = 0
+        blue = resMatrix[resMatrix.columns[0::2]]
+        green = resMatrix[resMatrix.columns[1::2]]
+    else:
+        greenF = 1
+        blue = resMatrix[resMatrix.columns[1::2]]
+        green = resMatrix[resMatrix.columns[0::2]]
+    
+    
+#    resMatrix1 = np.array(green)
+#    temp = np.array(blue)
+#    resMatrix1 = np.concatenate((resMatrix1,temp[8:,:]),axis=0)
+    
+    
+    sampRate = allData.transpose()["sampRate"].dropna().values[0]    
+    stim,tStim,_ = create_bg_stim(sampFreq=sampRate, greenFirst = greenF)
     stim = pd.Series(stim.flatten(),name="stimTrace")
     tStim = pd.Series(tStim.flatten(),name = "stimVector")
     allData = allData.append(stim)
     allData = allData.append(tStim)
-    blue=resMatrix[0:int(len(resMatrix)/2),:]
-    green=resMatrix[int(len(resMatrix)/2)+1:,:]
     
+#    blue=resMatrix[0:int(len(resMatrix)/2),:]
+#    green=resMatrix[int(len(resMatrix)/2)+1:,:]    
 #    qi,minIdx = response_quality_index(stimMatrix=resMatrix)
                 
-                    #midPoint = 5 # 3 sec stimulation at 8Hz
-         
-    greenOn=get_color_resp_max_value(respMatrix=green, interval=[0,12])
-    blueOn =get_color_resp_max_value(respMatrix=blue,  interval=[0,12])
+    #midPoint = 5 # 3 sec stimulation at 8Hz
+    maxVal=np.max(green**2)
+    greenOn=get_color_resp_max_value(respMatrix=np.array(green), interval=[9,19])
+    blueOn =get_color_resp_max_value(respMatrix=np.array(blue),  interval=[9,19])
                 
     gbIon = (greenOn-blueOn)/(greenOn+blueOn)
     gbIon = pd.Series(gbIon,name="colorOnInd")
                 
-    greenOff=get_color_resp_max_value(respMatrix=green, interval=[13,26])
-    blueOff =get_color_resp_max_value(respMatrix=blue,  interval=[13,26])
+    greenOff=get_color_resp_max_value(respMatrix=green, interval=[32,43])
+    blueOff =get_color_resp_max_value(respMatrix=blue,  interval=[33,43])
                 
     gbIoff = (greenOff-blueOff)/(greenOff+blueOff)
     gbIoff = pd.Series(gbIoff,name="colorOffInd")
@@ -1544,20 +1590,21 @@ def process_ds(allData, sufix):
     
     indices =[[0,8,16],[1,9,17],[2,10,18],[3,11,19],
               [4,12,20],[5,13,21],[6,14,22],[7,15,23]]
-    trials = ['trial{0}'.format(i) for i in range(1,25)]
-
-                           
+    
+    filtered = fnmatch.filter(allData.index, 'trial?')
+    
+    trials = ['trial{0}'.format(i) for i in range(1,len(filtered)+1)]         
+                     
     resMatrix = allData.transpose()[trials]
-    resMatrix = resMatrix.dropna()
-                    
+    resMatrix = resMatrix.dropna()     
+    
     arr1inds = np.argsort(directions)
     directions = np.array(directions)
     directions = directions[arr1inds]
-                    
-                                        
-                    
 
     resMatrix = np.array(resMatrix)
+    resMatrix = resMatrix[8:,:]        
+    
     dsMatrix = avg_matrix(matrix=resMatrix,grouping=indices)
     dsMatrix = dsMatrix[:,arr1inds]
 
@@ -1661,15 +1708,36 @@ def process_ds(allData, sufix):
     allData = allData.append(tStim)
     
     return allData
+
+def split_clusters_ds_non_ds(tempNatData,nonDSClusters):
     
+    DSClusTraces = dict()
+    nonDSClusTraces = dict()
+    keys = list(tempNatData.keys())
+    keys.remove("__header__")
+    keys.remove("__version__")
+    keys.remove("__globals__")
+          
+    for clus in keys:
+        if int(clus[1:]) in nonDSClusters:
+            nonDSClusTraces[clus]=tempNatData[clus]
+        else:    
+            DSClusTraces[clus]=tempNatData[clus]
+        
+    return nonDSClusTraces, DSClusTraces
+
 def process_chirp(allData,natureData):
     sufix="chirp"
     sampRate = allData.transpose()["sampRate"].dropna().values[0]
     tempNatData  = natureData.copy()
-
+    
     medianTrace = np.array(allData.transpose()["medianTrace"])
     medianTrace = medianTrace[~np.isnan(medianTrace)]
-                                                  
+    #the classification in the 2016 nature paper first separated cells into
+    #ds and non-ds and then clusters them. For the case here, it might be
+    #useful to "constrain" the cells in the same way.
+    
+                                                   
     corr,corrClus,clusTrace = n_max_correlations(medianTrace,tempNatData,5)
     
     ind = [sufix]*len(corrClus)    
