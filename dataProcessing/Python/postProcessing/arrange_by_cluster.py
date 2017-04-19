@@ -17,6 +17,22 @@ os.chdir("E:\\github\\ret_preproc\\dataProcessing\\Python\\postProcessing")
 import classFuncs as cfs
 import numpy as np
 import seaborn as sns
+import scipy.io.matlab as matlab
+
+natureClusters = matlab.loadmat("Z:\\User\\Chagas\\nature2016_RGCs\\2016_clusters.mat")
+
+
+#to get a list with non ds clusters, the online available dataset is opened, and 
+#two variables are used. The assignment of each cell to each cluster and the assignment
+# p-value of each cell to the DS test. If p-values are smaller than 0.05 than a cell is DS.
+# combining this two variables one can check which clusters give DS cells. Although some 
+#non-DS clusters have cells that have a p-value < 0.05.
+
+natureData = matlab.loadmat("Z:\\User\\Chagas\\nature2016_RGCs\\2016_data.mat")
+
+nonDSClusters = list(set(natureData["cluster_idx"][natureData["cell_dp"]>0.05]))
+
+nonDSClusTraces, DSClusTraces =  cfs.split_clusters_ds_non_ds(natureClusters,nonDSClusters)
 
 clusterClasses = pd.DataFrame({"c1" :"OFF local, OS",        "c2":"OFF DS",  
                                "c3" :"OFF step",             "c4":"OFF slow",             
@@ -47,6 +63,10 @@ clusterClasses = pd.DataFrame({"c1" :"OFF local, OS",        "c2":"OFF DS",
 rootFolder ="Z:\\User\\Chagas\\analysisResults\\"
 
 tree = cfs.get_folder_tree(rootFolder)
+
+
+
+
 
 #get all folders that have processed data --> ".h5" tag
 fieldFolders=list()
@@ -113,42 +133,6 @@ for folder in fieldFolders:
             columns=list()
             toframe = list()
             
-            if len (chirpField) > 0:
-                data = pd.read_hdf(chirpField[0],cell)
-                data = data.transpose()
-            
-                ident1 = ident[-3]+"_"+ident[-2]+"_"+cell[1:]
-                index.append(ident1)
-            
-            
-                columns.append("path")
-                
-                path = fieldList[0]
-                toframe.append(path[0:path.rfind("-")+3])
-            
-                columns.append("area")
-                toframe.append(data["area_um"].dropna().values[0])
-            
-                columns.append("chirp_qual")
-                toframe.append(data["qualIndex"].values[0])
-            
-                ffi = data["qualIndex"].values[0]
-    
-                columns.append("clus_corr1")
-                toframe.append(data["clusCorrs"].values[0])
-                
-                columns.append("cluster1")
-                toframe.append(data["clusIndx"].values[0])
-                    
-                columns.append("clus_corr2")
-                toframe.append(data["clusCorrs"].values[1])
-                
-                columns.append("cluster2")
-                toframe.append(data["clusIndx"].values[1])
-                
-                columns.append("chirp_median_trace")
-                toframe.append(data["medianTrace"].dropna().values)
-                
             if len (dsField) > 0:
                 data = pd.read_hdf(dsField[0],cell)
                 data = data.transpose()
@@ -156,9 +140,8 @@ for folder in fieldFolders:
                 columns.append("ds_qual")
                 toframe.append(data["qualIndex"].values[0])
                 
-                ffi = (data["qualIndex"].values[0]-ffi)/(data["qualIndex"].values[0]+ffi)    
-                columns.append("full_field_index")
-                toframe.append(ffi)
+                qualDS = data["qualIndex"].values[0]
+                
         
                 columns.append("dir_selec")
                 toframe.append(data["dirSelec"].values[0])
@@ -185,6 +168,66 @@ for folder in fieldFolders:
                 
                 columns.append("ds_median_trace")
                 toframe.append(data["medianTrace"].dropna().values)
+                
+            if len (chirpField) > 0:
+                data = pd.read_hdf(chirpField[0],cell)
+                data = data.transpose()
+                ident1 = ident[-1]
+                ident1 = ident1[ident1.find("_")+1:]
+                ident1 = ident1[0:ident1.find("_")]
+                ident1 = ident[-3]+"_"+ident[-2]+"_"+ident1+"_"+cell[1:]
+                index.append(ident1)
+            
+            
+                columns.append("path")
+                
+                path = fieldList[0]
+                toframe.append(path[0:path.rfind("-")+3])
+            
+                columns.append("area")
+                toframe.append(data["area_um"].dropna().values[0])
+            
+                columns.append("chirp_qual")
+                toframe.append(data["qualIndex"].values[0])
+            
+                ffi = data["qualIndex"].values[0]
+                ffi = (qualDS-ffi)/(qualDS+ffi)    
+                
+                columns.append("full_field_index")
+                toframe.append(ffi)
+                
+                #add clustering here.
+                #______________________
+                #______________________
+                if ds == 1:    
+                    tempNatClusters = DSClusTraces.copy()
+                else:
+                    tempNatClusters = nonDSClusTraces.copy()
+                    
+                corr,corrClus,clusTrace = cfs.n_max_correlations(data["medianTrace"].dropna().values,
+                                                                 tempNatClusters,2)
+
+                
+                columns.append("clus_corr1")
+                toframe.append(corr[0])
+                
+                columns.append("cluster1")
+                toframe.append(int(corrClus[0][1:]))
+                
+                if len(corr)<=1:
+                    corr.append(corr[0])
+                    corrClus.append(corrClus[0])
+                
+                columns.append("clus_corr2")
+                toframe.append(corr[1])
+                
+                columns.append("cluster2")
+                toframe.append(int(corrClus[1][1:]))
+                
+                columns.append("chirp_median_trace")
+                toframe.append(data["medianTrace"].dropna().values)
+                
+            
                 
             if len (bgField) > 0:
                 data = pd.read_hdf(bgField[0],cell)
@@ -250,8 +293,6 @@ for folder in fieldFolders:
             majorTable =majorTable.append(pd.DataFrame(data=[toframe],
                                                columns=columns,
                                                index=index))
-
-    
     
         day=folder.split("\\")[-2]
         experiment = folder.split("\\")[-1]
