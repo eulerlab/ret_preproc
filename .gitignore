@@ -1,4 +1,7 @@
-*.pyc
+*.pycD
 
 # JetBrains Python IDE (PyCharm) stuff
 **/.idea/
+
+dataProcessing/Python/postProcessing/join_all_n_plot.py
+dataProcessing/Python/postProcessing/plot_fields.py
