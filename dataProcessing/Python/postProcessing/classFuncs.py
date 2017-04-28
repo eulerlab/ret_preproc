@@ -76,7 +76,80 @@ def calc_area(rois,cellnum=1):
     
     
     return pix,row,col
-    
+
+
+def roi_area(rois, maskAreaUm=None, roiNum=None):
+    """Calculate ROI areas, based on the number of ROI mask pixels.
+    INPUT:
+    ------
+        rois: ndarray
+            ROI mask containing all the ROIS - filled with zeros where there is no ROI
+            and a number for every pixel corresponding to a specific ROI
+            (this number is negative by lab convention)
+        maskAreaUm: list
+            X- and y-dimension (in um) of the ROI mask.
+        cellnum: scalar, optional
+            Number ID of ROI to be measured.
+    OUPUT:
+    ------
+        roiAreas: ndarray, dtype=float
+            Vector of ROI areas in um^2.
+        nPix: ndarray, dtype=float
+            Corresponding number of pixels occupied by ROI in ROI mask.
+    """
+
+    ## Assume ROI mask area if not specified
+    if maskAreaUm is None:
+        maskAreaUm = [110, 110]
+        print('Assuming maskAreaUm =', maskAreaUm)
+
+    ## Redefine ROI mask
+    rois[rois == 1] = 0  # Mark non-ROI area with zeros (not ones)
+    rois = np.abs(rois)  # Mark ROI IDs with positive numbers (not negative ones)
+
+    ## TODO: Fill holes in ROI mask (e.g. cell-nuclei)
+
+
+    # If no particular ROI is specified, get all ROI areas
+    if roiNum is None:
+        roiAreas = np.zeros([np.unique(rois[rois != 0]).shape[0]])  # Note: exclude roi==0: empty area
+        nPix = np.zeros([np.unique(rois[rois != 0]).shape[0]])  # Note: exclude roi==0: empty area
+
+        ## Go through each ROI
+        for i, roi in enumerate(np.unique(rois[rois != 0])):
+            # Get number of pixels of single ROI mask
+            row, col = np.where(np.array(rois) == roi)
+            nPix[i] = len(row)  # = len(col)
+
+            ## Convert ROI pixels into real ROI area (in um)
+            # Total ROI mask size in number of pixels
+            maskAreaPix = np.array(rois.shape)
+            # Corresponding size per pixel in x- and y-dim
+            pixSize = maskAreaUm / maskAreaPix
+            # Pixel area (in um)
+            pixArea = pixSize[0] * pixSize[1]
+            # Real total ROI mask area
+            roiAreas[i] = nPix[i] * pixArea
+
+    # Else, if a particular ROI is specified, get only that area
+    elif roiNum is not None:
+        # Get number of pixels of single ROI mask
+        row, col = np.where(np.array(rois) == roiNum)
+        nPix = len(row)  # = len(col)
+
+        ## Convert ROI pixels into real ROI area (in um)
+        # Total ROI mask size in number of pixels
+        maskAreaPix = np.array(rois.shape)
+        # Corresponding size per pixel in x- and y-dim
+        pixSize = maskAreaUm / maskAreaPix
+        # Pixel area (in um)
+        pixArea = pixSize[0] * pixSize[1]
+        # Real total ROI mask area
+        roiAreas = nPix * pixArea
+
+    return roiAreas, nPix
+
+
 def calc_delay(stimDelay=17.0,sampRate=7.8):
     """function to calculate the delay in between the trigger and stimulator
     it requires samprate(hz) and stimdelay(ms). It outputs the delay in bins,
