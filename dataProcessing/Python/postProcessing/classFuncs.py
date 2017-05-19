@@ -1786,6 +1786,25 @@ def process_ds(allData, suffix):
     
     return allData
 
+def ds_ana(traces):
+    """
+    INPUT:
+    OUTPUT:
+    TODO:
+        - start implementing function
+        - make process_ds flexible for use without suffix and with simple array of bar responses
+        - make subfunction sorting trials by condition and direction
+            > facilitates all processes downstream
+        - check if need to normalize single trials if not using snippets
+        - give single sorted traces as ouput [time, trial, condition]
+            > make dirIdx into array and transpose: dirIdx = np.array(...); dirIdx.T
+        - for many outputs: return dict or namedtuple
+        - return:
+            - sorted single traces
+            - directions?
+    """
+
+
 def split_clusters_ds_non_ds(tempNatData,nonDSClusters):
     
     DSClusTraces = dict()
