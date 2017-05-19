@@ -73,8 +73,7 @@ def calc_area(rois,cellnum=1):
     row = indx[0]
     col = indx[1]    
     pix=len(row)
-    
-    
+
     return pix,row,col
 
 
@@ -436,7 +435,7 @@ def create_ds_stim(sampFreq=7.8,
     tStim = tStim*(p["durFr_s"])
     directions = p["DirList"]
     screenDur = p["tMoveDur_s"]
-    return stim,tStim, directions, screenDur
+    return stim, tStim, directions, screenDur
 
 def create_field_plot(fh=None,ax=None):
     if fh==None:
