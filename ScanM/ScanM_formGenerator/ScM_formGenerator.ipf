@@ -2,8 +2,9 @@
 //	Project		: ScanMachine (ScanM)
 //	Module		: ScM_formGenerator.ipf
 //	Author		: Thomas Euler
-//	Copyright	: (C) CIN/Uni Tübingen 2009-2015
+//	Copyright	: (C) CIN/Uni Tübingen 2009-2017
 //	History		: 2015-10-22 	Creation
+//               2017-08-11	Adapted for IgorPro 7
 //
 //	Purpose		: Stand-alone editor for experimental header files 
 //
@@ -123,6 +124,13 @@ function FG_createForm(sWinName)
 			if(StringMatch(sTemp[len-1], "\r"))
 				sTemp	= sTemp[0,len-2]
 			endif	
+			
+			// Handel special characters depending on IgorPro version
+			//
+#if IgorVersion() >= 7.00
+			sTemp = replacestring("\260", sTemp, "\xC2\xB0") // degree character
+			sTemp = replacestring("\265", sTemp, "\xC2\xB5") // micron character			
+#endif						
 			
 			if(nLine == 0)
 				// Window coordinates
