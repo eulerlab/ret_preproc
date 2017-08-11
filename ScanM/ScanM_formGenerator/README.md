@@ -4,17 +4,18 @@ e.g. for experimental header files (beta)
 
 ### Installation
 
-1. If not already present, make a folder called "ScanM" under ``...\Igor Pro 6 User Files\User Procedures``.
+1. If not already present, make a folder called ```ScanM``` under ```...\Igor Pro 6 User Files\User Procedures```.
 
-2. Copy all files into ``...\Igor Pro 6 User Files\User Procedures\ScanM``
+2. Copy all files into ```...\Igor Pro 6 User Files\User Procedures\ScanM```
 
-3. Create in the directory ``...\Igor Pro 6 User Files\Igor Procedures`` a shortcut to ``...\Igor Pro 6 User Files\User Procedures\ScanM\ScM_formGenerator_GUI.ipf``
+3. Create in the directory ```...\Igor Pro 6 User Files\Igor Procedures``` a shortcut to 
+   ```...\Igor Pro 6 User Files\User Procedures\ScanM\ScM_formGenerator_GUI.ipf```
 
-When IgorPRO is next started, a new menu entry ``ScanM`` should appear.
+When IgorPRO is next started, a new menu entry ```ScanM``` should appear.
 
 #### Igor Functions
 
-``function FG_createForm(sWinName)``
+```function FG_createForm(sWinName)```
 
 Generates a new form using ``template.txt`` in the present directory.
 
