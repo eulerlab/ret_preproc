@@ -15,21 +15,24 @@ When IgorPRO is next started, a new menu entry ```ScanM``` should appear.
 
 #### Igor Functions
 
-```function FG_createForm(sWinName)```
+* ```function FG_createForm(sWinName)```
+  
+  Generates a new form using ``template.txt`` in the present directory.
 
-Generates a new form using ``template.txt`` in the present directory.
+* ```function FG_updateKeyValueLists (sFPath, sFName)```
 
-``function FG_updateKeyValueLists (sFPath, sFName)``
+  Update key-value lists from .ini file, with ``sFPath``, a full or partial path to folder for the header file, w/o final 
+  "\\", and ``sFName``, the name of header file (``.ini`` file) w/o file extension.
 
-Update key-value lists from .ini file, with ``sFPath``, a full or partial path to folder for the header file, w/o final "\\", and ``sFName``, the name of header file (``.ini`` file) w/o file extension.
+* ``function FG_updateForm ()``
 
-``function FG_updateForm ()``
+  Update form from key-value lists.
 
-Update form from key-value lists.
+* ``function FG_saveToINIFile (sFPath, sFName, doOverwrite)``
 
-``function FG_saveToINIFile (sFPath, sFName, doOverwrite)``
-
-Saves key-value list to a experimental header file. The file must not yet exist. With ``sFPath``, a full or partial path to folder for the header file, w/o final "\\", ``sFName`` the name of header file (``.ini`` file) w/o file extension, and ``doOverwrite`` (0=abort if file exists; 1=overwrite file after making a backup copy).  Note that no copies are overwritten.
+  Saves key-value list to a experimental header file. The file must not yet exist. With ``sFPath``, a full or partial path to 
+  folder for the header file, w/o final "\\", ``sFName`` the name of header file (``.ini`` file) w/o file extension, and 
+  ``doOverwrite`` (0=abort if file exists; 1=overwrite file after making a backup copy).  Note that no copies are overwritten.
 
 ##### Python Functions
 
