@@ -1,6 +1,6 @@
-# ScanM FileIO - Stand-alone IgorPRO reader for ScanM data files
+## ScanM FileIO - Stand-alone IgorPRO reader for ScanM data files
 
-## Installation
+### Installation
 
 *IMPORTANT:* The stand-alone ScanM file reader also works with IgorPro 7, although currently only with the 32bit version.
 
