@@ -1,8 +1,8 @@
-### ScanM formGenerator - formGenerator for IgorPRO
+## ScanM formGenerator - formGenerator for IgorPro
 
 e.g. for experimental header files (beta)
 
-####Installation
+### Installation
 
 1. If not already present, make a folder called "ScanM" under ``...\Igor Pro 6 User Files\User Procedures``.
 
