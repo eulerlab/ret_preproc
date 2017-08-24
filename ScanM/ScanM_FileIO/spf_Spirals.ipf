@@ -174,7 +174,6 @@ function radialScan(wScanPathFuncParams)
 	// Cleaning up temporary waves
 	// (this is important otherwise Igor/ScanM may run out of memory)
 	//	
-	
 	killWaves/z StimX1Offs, StimY1Offs, StimPC1Offs
 	killWaves/z pix_x, pix_y, pix_r, pix_theta
 end	
@@ -194,6 +193,14 @@ end
 //									for the used number of AO channels (nCh)
 //		wScanPathFuncParams	:= 	Scan function parameter wave 
 //									(for details on content, see comments in function)
+//  Output	:
+//		Must return "SCM_PixDataResorted" if pixel data is just resorted (w/o loss 
+//		of information) by the scan decoder or "SCM_PixDataDecoded" if the 
+//		reconstruction/decoding of the pixel data involves some kind of information 
+//		loss. The return value determines if the ScanM file loader retains two sets 
+//		of data waves (SCM_PixDataDecoded), one with the raw and one with the decoded 
+//		pixed data, or just one set (SCM_PixDataResorted).
+//
 // ---------------------------------------------------------------------------------- 
 function radialScan_prepareDecode(wStimBufData, wScanPathFuncParams)
 	wave		wStimBufData, wScanPathFuncParams 
@@ -241,6 +248,8 @@ function radialScan_prepareDecode(wStimBufData, wScanPathFuncParams)
 	// Cleaning up temporary waves
 	//	
 	killWaves/z countVector
+	
+	return SCM_PixDataDecoded
 end
 
 // -----------------------------------------------------------------------------------		
@@ -311,6 +320,13 @@ function radialScan_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPat
 	iAICh				= wParams[1] 	// index of AI channel to reconstruct (0..3)
 	noAOCh3_Z			= pwScanPathFuncParams[11] 	// cp.noAOCh3_Z, whether the Z channel is being used
 	// <---
+	
+//	if(wParams[2] < 5000)
+//		print wParams
+//	//	print WaveInfo(wImgFrame, 0)
+//	//	print WaveInfo(wPixelDataBlock, 0)
+//	endif	 
+	
 
 	// Initialize 
 	//

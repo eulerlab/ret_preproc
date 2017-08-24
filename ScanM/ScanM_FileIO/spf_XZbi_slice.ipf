@@ -1,16 +1,16 @@
 // -----------------------------------------------------------------------------------		
 //	Project			: ScanMachine (ScanM)
 //	Module type		: Scan path function/decoder file (spf_*.ipf):
-//	Function		: XZ slice
+//	Function		: XZ slice, bidirectional
 //	Author			: Thomas Euler
 //	Copyright		: (C) CIN/Uni Tübingen 2016-2017
-//	History			: 2017-02-17	
+//	History			: 2017-08-17	
 //
 // ---------------------------------------------------------------------------------- 
 #pragma rtGlobals=1	
 
 // ---> START OF USER SECTION
-#pragma ModuleName	= spf_XZ_slice
+#pragma ModuleName	= spf_XZbi_slice
 // <--- END OF USER SECTION 
 
 // -----------------------------------------------------------------------------------		
@@ -29,7 +29,7 @@
 //		StimPC[]				:=	AO channel 2, laser blanking signal (TTL levels)
 //		StimZ[]					:= 	AO channel 3, z axis (i.e. ETL)
 // ---------------------------------------------------------------------------------- 
-function xzSlice (wScanPathFuncParams)
+function xzBiSlice (wScanPathFuncParams)
 	wave		wScanPathFuncParams
 
 	variable	nPntsTotal, dX, dZ
@@ -39,13 +39,13 @@ function xzSlice (wScanPathFuncParams)
 	variable	xVMax, nB, iB, iP
 	variable	nStimPerFr, xInc1, xInc2, iX
 	variable	dXScan, iZ, zVLastLine, zInc1, zInc2
+	variable	dxFrDecoded, dyFrDecoded, nImgPerFrame, iBack
 	
 	// ---> INPUT
 	// Retrieve parameters about the scan configuration 
 	//
 	nPntsTotal		= wScanPathFuncParams[0]	// = dx*dy*dz *nStimPerFr
 	dX				= wScanPathFuncParams[1]	// cp.dXPixels
-//	dY				= wScanPathFuncParams[2]	// cp.dYPixels
 	dZ				= wScanPathFuncParams[3]	// cp.dZPixels
 	nPntsRetrace   = wScanPathFuncParams[4]	// cp.nPixRetrace, # of points per line used for retrace	
 	nPntsLineOffs	= wScanPathFuncParams[5]	// cp.nXPixLineOffs, # of points per line before pixels are aquired
@@ -56,9 +56,11 @@ function xzSlice (wScanPathFuncParams)
 	zVMinDef		= wScanPathFuncParams[10]	// cp.minDefAO_Lens_V
 	zVMaxDef		= wScanPathFuncParams[11]	// cp.maxDefAO_Lens_V
 	nStimPerFr		= wScanPathFuncParams[12]	// cp.stimBufPerFr
-//	dxFrDecoded		= wScanPathFuncParams[13]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
-//	dyFrDecoded		= wScanPathFuncParams[14]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
-//	nImgPerFrame	= wScanPathFuncParams[15]	// cp.nImgPerFrame, # of images per frame
+	dxFrDecoded		= wScanPathFuncParams[13]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
+	dyFrDecoded		= wScanPathFuncParams[14]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
+	nImgPerFrame	= wScanPathFuncParams[15]	// cp.nImgPerFrame, # of images per frame
+	
+	nImgPerFrame	= 2 
 	// <---
 
  	// ---> OUTPUT
@@ -85,13 +87,24 @@ function xzSlice (wScanPathFuncParams)
 	xInc2			= xInc1 /2
 	zInc1			= 2*zVMax /(dZ-1) /(nPntsRetrace +1)
 	zInc2			= 2*zVMax /((nPntsRetrace +1) *2)
+	iBack			= 1
 	
 	for(iZ=0; iZ<dZ; iZ+=1)
 		// Define scan points
 		//
 		for(iX=0; iX<dxScan; iX+=1)
 			StimX[iZ*dx +iX]		= 2*xVMax *iX/(dxScan -1) -xVMax
-			StimZ[iZ*dx +iX]		= 2*zVMax *(iZ/(dZ -1)) -zVMax				
+			if(iZ < dZ/nImgPerFrame)
+				StimZ[iZ*dx +iX]	= 2*zVMax *nImgPerFrame *(iZ/(dZ -1)) -zVMax				
+			else
+				// print iBack // Switched off 170817 LR
+				if(iZ == (dZ/nImgPerFrame -1))
+					iBack 			= iZ*dx +iX -1
+				else
+					iBack			= iBack -1
+				endif
+				StimZ[iZ*dx +iX]	= StimZ[iBack]
+			endif					
 			if(iX >= nPntsLineOffs)
 				StimPC[iZ*dx +iX]	= ScM_TTLhigh
 			endif	
@@ -154,11 +167,11 @@ end
 //		pixed data, or just one set (SCM_PixDataResorted).
 //
 // ---------------------------------------------------------------------------------- 
-function xzSlice_prepareDecode(wStimBufData, wScanPathFuncParams)
+function xzBiSlice_prepareDecode(wStimBufData, wScanPathFuncParams)
 	wave		wStimBufData, wScanPathFuncParams 
 	// Nothing to do
-	
-	return SCM_PixDataResorted
+
+	return SCM_PixDataDecoded
 end
 
 // -----------------------------------------------------------------------------------		
@@ -188,7 +201,7 @@ end
 //	Output	:
 //		wImgFrame[][]
 // ---------------------------------------------------------------------------------- 
-function xzSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath, wParams)
+function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath, wParams)
 	wave 	wImgFrame, wImgFrameAv, wPixelDataBlock
 	string	sCurrConfPath
 	wave	wParams
@@ -207,12 +220,6 @@ function xzSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath, 
 	pixBlockPerChLen	= wParams[4]
 	currNFrPerStep		= wParams[5]
 	isDispFullFrames	= wParams[6]
-
-//	if(wParams[2] < 5000)
-//		print wParams
-//	//	print WaveInfo(wImgFrame, 0)
-//	//	print WaveInfo(wPixelDataBlock, 0)
-//	endif	 
 
 	// Decoding	 ...
 	//

@@ -17,13 +17,16 @@
 #pragma rtGlobals=1		// Use modern global access method.
 
 #ifndef ScM_ipf_present
-constant 	ScM_TTLlow			= 0
-constant 	ScM_TTLhigh			= 5	
+constant 	ScM_TTLlow				= 0
+constant 	ScM_TTLhigh				= 5	
 
-constant	SCM_indexScannerX	= 0        
-constant	SCM_indexScannerY	= 1        
-constant	SCM_indexLaserBlk	= 2        
-constant	SCM_indexLensZ		= 3        
+constant	SCM_indexScannerX		= 0        
+constant	SCM_indexScannerY		= 1        
+constant	SCM_indexLaserBlk		= 2        
+constant	SCM_indexLensZ			= 3        
+	
+constant	SCM_PixDataResorted	= 0	
+constant	SCM_PixDataDecoded		= 1
 #endif
 
 // ----------------------------------------------------------------------------------
