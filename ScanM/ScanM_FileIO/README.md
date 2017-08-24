@@ -1,5 +1,27 @@
 ## ScanM FileIO - Stand-alone IgorPRO reader for ScanM data files
 
+### Release notes
+
+**ScanM v2.04**
+
+  - ``.SMH`` files now also contain information about the ETL settings.
+  - Modification of ``ScM_FileIO.ipf``:
+    Three cases of scan data are now considered:
+
+       - scans that are easily to reconstruct w/o information loss (e.g. standard xy scans)
+
+       - scans where the pixel data needs to be reordered but is loss-less (e.g. bidirectional xz scans)
+       
+       - scans that cannot be easily represented on the screen and that require a decoder to reconstruct an image,
+          which represents an approximation (= down-sampled version) of the actually scan field. Here, the decoding 
+          may involve information loss (e.g. spiral scans).
+
+     As a consequence, when importing pixel data for scans of the last type, both the raw data is imported (e.g. 
+     ``wDataCh0_raw``) and a reconstructed representation (``wDataCh0``) is generated, using the original scan
+     path function. In addition, the ``ScM_FileIO.ipf`` regenerates the stimulus buffers and stores them in an own
+     data folder; these are then accessible for analysis scripts, e.g. to determine the exact timing of each pixel.
+
+
 ### Installation
 
 *IMPORTANT:* The stand-alone ScanM file reader also works with IgorPro 7, although currently only with the 32bit version.
