@@ -2,7 +2,7 @@
 //	Project		: ScanMachine (ScanM)
 //	Module		: ScM_FileIO.ipf
 //	Author		: Thomas Euler
-//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2016
+//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2017
 //	History		: 2010-10-22 	Creation
 //				  2011-02-13	Modification for "real" SMP files started
 //				  2012-12-18	and before: added new header parameters, 
@@ -22,6 +22,7 @@
 //				  2017-08-10	Bug fix and checked for compatibitity to Igor7 32bit 
 //				  2017-08-19	Added the ability to recreate stimBufData for
 //				  				reconstructing/decoding the scans	
+//				  2017-08-30	Checked for compatibility with older data files
 //
 //	Purpose		: Stand-Alone reader/writer for ScanM's SMP files
 //
@@ -52,6 +53,10 @@
 //
 // ----------------------------------------------------------------------------------
 #pragma tGlobals=1		// Use modern global access method.
+
+#ifndef ScM_ipf_present
+strconstant 	SCM_IgorVersion				= "0.2.04"
+#endif
 
 // ----------------------------------------------------------------------------------
 // Constants that define the import behavior of this module
@@ -96,6 +101,7 @@ strconstant		SCMIO_stimBufFolder			= "ScM_stimBufs"
 strconstant		SCMIO_stimBufListName			= "wStimBufList"
 strconstant		SCMIO_stimBufInfoWaveName		= "wStimBufInfo"
 strconstant		SCMIO_scanDecCountMatrixName	= "countMatrix"
+strconstant		SCMIO_otherParamsWaveName		= "wOtherParams"
 
 strconstant		SCMIO_typeKeySep				= ","
 strconstant		SCMIO_keyValueSep				= "="
@@ -205,7 +211,7 @@ strconstant	SCMIO_key_OversampFactor				= "uOversampling_Factor"
 //strconstant	SCMIO_key_ZCoord_um				= "fZCoord_um"
 //strconstant	SCMIO_key_ZStep_um					= "fZStep_um"
 
-constant		SCMIO_UserParameterCount			= 41
+constant		SCMIO_UserParameterCount			= 42
 strconstant		SCMIO_key_USER_ScanMode			= "uScanMode"
 strconstant		SCMIO_key_USER_ScanType			= "uScanType"
 strconstant		SCMIO_key_USER_dxPix				= "uFrameWidth"
@@ -239,7 +245,7 @@ strconstant		SCMIO_key_USER_Objective			= "sObjective"
 strconstant		SCMIO_key_USER_aspectRatioFrame	= "fAspectRatioFrame"
 strconstant		SCMIO_key_USER_stimBufPerFr		= "uStimBufPerFr"
 strconstant		SCMIO_key_USER_iChFastScan		= "uiChFastScan"
-//strconstant		SCMIO_key_USER_noYScan				= "unoYScan"
+//strconstant	SCMIO_key_USER_noYScan				= "unoYScan"
 strconstant		SCMIO_key_USER_dxFrDecoded		= "udxFrDecoded"
 strconstant		SCMIO_key_USER_dyFrDecoded		= "udyFrDecoded"
 strconstant		SCMIO_key_USER_dzFrDecoded		= "udzFrDecoded"
@@ -253,6 +259,7 @@ strconstant		SCMIO_key_USER_ETL_polarity		= "fETL_polarity_V"
 strconstant		SCMIO_key_USER_ETL_minV			= "fETL_min_V"
 strconstant		SCMIO_key_USER_ETL_maxV			= "fETL_max_V"
 strconstant		SCMIO_key_USER_ETL_neutralV		= "fETL_neutral_V"
+strconstant		SCMIO_key_USER_nImgPerFr			= "unImgPerFr"
 // ...
 
 //strconstant	SCMIO_key_USER_trajParams_x		= "fTrajParams_%d"
@@ -278,9 +285,13 @@ constant		SCMIO_Param_lastEntry				= 7
 strconstant		SCMIO_mne_ToggleIntegrStim		= " Integrate stimulus in AI3 into AI0"
 
 // ----------------------------------------------------------------------------------
+function/T		mneMacrosLoadScMDataFile()
+	return " Load ScanM data file, Igor v"+ SCM_IgorVersion
+end
+
 Menu "ScanM", dynamic
 	"-"
-	" Load ScanM data file ...",	/Q, 	LoadSMPFileWithDialog()
+	mneMacrosLoadScMDataFile(),	/Q, 	LoadSMPFileWithDialog()
 	mneMacrosToggleIntegrStim(),	/Q, 	ToggleMne_IntegrStim()
 	"-"	
 End
@@ -406,7 +417,7 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDimLabel 0,16, RealStimDurList,		wStrParams					
 	wStrParams			= ""				
 
-	Make/O/N=60 $(SCMIO_NumParamWave)	
+	Make/O/N=61 $(SCMIO_NumParamWave)	
 	wave wNumParams	= $(SCMIO_NumParamWave)	
 	SetDimLabel 0, 0, HdrLenInValuePairs,	wNumParams				
 	SetDimLabel 0, 1, HdrLenInBytes,			wNumParams		
@@ -473,6 +484,8 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDimLabel 0,57, User_ETL_min_V,			wNumParams
 	SetDimLabel 0,58, User_ETL_max_V,			wNumParams
 	SetDimLabel 0,59, User_ETL_neutral_V,		wNumParams
+
+	SetDimLabel 0,60, User_nImgPerFr,			wNumParams
 		
 	Make/O/N=(SCMIO_maxStimChans, SCMIO_maxStimBufMapEntries), $(SCMIO_StimBufMapEntrWave)		
 	Make/O/N=(SCMIO_maxTrajParams), $(SCMIO_TrajParamWave)		
@@ -490,8 +503,8 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 	wave		pwSCIOParams 
 	
 	variable	doAddCFDNote, doIntStim, StimCh, TargetCh
-	variable	fileHnd, j, iInCh, m, n, o, nAICh, iPixBPerCh
-	variable	nHdr_bytes, nHdr_pairs, iPixB, nPixB, PixBLen, nFr
+	variable	fileHnd, j, iInCh, m, n, offsInBuf, nAICh, iPixBPerCh, isFlipped
+	variable	nHdr_bytes, nHdr_pairs, iPixB, nPixB, PixBLen, nFr, iBufInImg
 	string		sTemp, sSavDF, sDFName, sHeader, sWave, sTemp2, sUserScanFName
 	string		sWaveRaw, sWaveDecode, sWaveDecodeAv 
 	struct		SMP_preHeaderStruct	preHdr
@@ -503,7 +516,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 	variable	iStimBuf
 	variable	dxFrDecode, dyFrDecode, dzFrDecode, nPixDecodeFr
 	string 		sPixDataRawFormat, sPixDataDecodeFormat
-	variable	isExtSPF, isDecoded, iCh, iPixBAllCh, nBufPerFr
+	variable	isExtSPF, isDecoded, iCh, iPixBAllCh, nBufPerFr, nImgPerFr, iImg
 	
 	// Initialize
 	//
@@ -605,6 +618,13 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 		// Recreate stimulus buffer, if required
 		//
 		WAVE	pwInfo	= ScM_getStimBufInfo(sDFName)
+		if(!WaveExists(pwInfo))
+			// Somehow now stimulus buffer data waves were generated; happens sometimes
+			// with the scanDecoder function ... I don't know why. It seems to be fine
+			// when retrying ...
+			//
+			return ""
+		endif	
 		iStimBuf		=  pwInfo[%stimBufIndex] 
 		sprintf sTemp, "root:%s:%s", SCMIO_stimBufFolder, SCMIO_stimBufListName
 		WAVE/T	pwStimBufList	= $(sTemp)
@@ -633,6 +653,32 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 			FUNCREF ScM_ScanPathDecodeProtoFunc fDecode	= $(sUserScanFName + "_decode")
 		endif
 
+		// ---------------------------------------------------------------------------
+		// Stay compatible with older data files
+		//	
+		if(pwNP[%User_ScanMode] == ScM_scanMode_XYImage)
+			if((pwNP[%User_dxPix] /(pwNP[%User_nPixRetrace] +pwNP[%User_nXPixLineOffs])) < 4)
+				pwNP[%User_nPixRetrace]	= pwScanPathFuncParams[3]
+				pwNP[%User_nXPixLineOffs]	= pwScanPathFuncParams[4]
+			endif	
+			pwNP[%User_dxFrDecoded] 	= (pwNP[%User_dxFrDecoded] == 0)?(pwNP[%User_dxPix]):(pwNP[%User_dxFrDecoded])
+			pwNP[%User_dyFrDecoded] 	= (pwNP[%User_dyFrDecoded] == 0)?(pwNP[%User_dyPix]):(pwNP[%User_dyFrDecoded])
+			pwNP[%User_dzFrDecoded] 	= (pwNP[%User_dzFrDecoded] == 0)?(pwNP[%User_dzPix]):(pwNP[%User_dzFrDecoded])			
+			// ...			
+		endif
+		pwNP[%User_aspectRatioFr]		= max(1, pwNP[%User_aspectRatioFr])
+		pwNP[%User_stimBufPerFr]		= max(1, pwNP[%User_stimBufPerFr])
+		pwNP[%User_nImgPerFr]			= max(1, pwNP[%User_nImgPerFr])
+	//	pwNP[%User_iChFastScan]
+	//	pwNP[%User_trajDefVRange_V
+	//	pwNP[%User_nTrajParams
+	//	pwNP[%User_zoomZ
+	//	pwNP[%User_offsetZ_V
+	//	pwNP[%User_zeroZ_V
+	//	pwNP[%User_ETL_polarity_V
+	//	pwNP[%User_ETL_min_V
+	//	pwNP[%User_ETL_max_V
+	//	pwNP[%User_ETL_neutral_V
 		
 		// ---------------------------------------------------------------------------
 		// Open SMP file and read in pixel data
@@ -712,6 +758,23 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 		nBufPerFr		= nPixPerFr /PixBLen
 		nFr				= (nPixB/nFrPerStep*PixBLen) /(nPixPerFr) 
 		nAICh			= pwNP[%NumberOfInputChans]
+		nImgPerFr		= max(1, pwNP[%User_nImgPerFr])
+		
+		// Correct decoded frame size in case of bidrectional scans
+		//
+		if(nImgPerFr > 1)
+			switch (pwNP[%User_ScanMode])
+				case ScM_scanMode_XZYImage	:
+					pwNP[%dyFrDecoded]	/=	nImgPerFr
+					break			
+		
+			//	case ScM_scanMode_ZXYImage	:
+			//	case ScM_scanMode_XYImage		:
+			//	case ScM_scanMode_XYZImage	:
+			//	case ScM_scanMode_TrajectArb	:
+			//		break
+			endswitch
+		endif	
 		dxFrDecode		= pwNP[%User_dxFrDecoded]
 		dyFrDecode		= pwNP[%User_dyFrDecoded]
 		dzFrDecode		= pwNP[%User_dzFrDecoded]
@@ -735,6 +798,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				// are created
 				//
 				if(pwInfo[%isExtScanFunction] && (pwInfo[%pixDecodeMode] == SCM_PixDataDecoded)) 
+			//	if(pwInfo[%isExtScanFunction])
 					sPixDataRawFormat		= SCMIO_pixDataWaveRawFormat
 					sPixDataDecodeFormat	= SCMIO_pixDataWaveDecodeFormat
 					sprintf sWaveRaw, sPixDataRawFormat, iInCh
@@ -831,7 +895,6 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				//
 				Redimension/E=1/N=(PixBLen *nAICh) pwPixBAllCh
 				FBinRead/B=0 fileHnd, pwPixBAllCh
-			//	Redimension/E=1/N=(dFast, PixBLen/dFast, nAICh) pwPixBAllCh
 			
 				iCh	= 0
 				for(iInCh=0; iInCh<SCMIO_maxInputChans; iInCh+=1)
@@ -840,6 +903,7 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 						pwPixB[]	= pwPixBAllCh[p +iCh*PixBLen]
 						
 						if((isExtSPF && isDecoded) || !isExtSPF)
+					//	if(1)
 							// Standard scan path function was used or external scan
 							// path function with pixel decoding
 							//
@@ -854,26 +918,58 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 							// decoder to fill the second set of pixel data waves
 							//
 							wTempMoreParam[0]	= nAICh 
-							wTempMoreParam[1]	= iInCh		
-							wTempMoreParam[2]	= iPixBAllCh *PixBLen // *nAICh				
-							wTempMoreParam[3]	= nPixPerFr	 				
+							wTempMoreParam[1]	= iCh
+							wTempMoreParam[2]	= iPixBAllCh *PixBLen
+							wTempMoreParam[3]	= nPixPerFr	 /nImgPerFr
 							wTempMoreParam[4]	= PixBLen
 							wTempMoreParam[5]	= 1				
 							wTempMoreParam[6]	= 0		
+						//	wDecode	= NaN
 							fDecode(wDecode, wDecodeAv, pwPixBAllCh, "root:" +sDFName +":", wTempMoreParam)
-								
-								
+
+//							Duplicate/O wDecode, wDecodeTemp
+//							Redimension/E=1/N=(dxFrDecode, dyFrDecode) wDecodeTemp
+
 							// Copy pixel data from temporary frame into pixel data wave
 							// 	
 							sprintf sWave, sPixDataDecodeFormat, iInCh
 							wave pwPixData	= $(sWave)
-							Redimension/E=1/N=(dxFrDecode *dyFrDecode *nFr) pwPixData
-							m				= iPixBPerCh *PixBLen			
-							n				= m +PixBLen -1 
-							o				= mod(iPixBPerCh, nBufPerFr)*PixBLen
-						//	print m, n, o, iPixBPerCh, nBufPerFr
-							pwPixData[m,n]	= wDecode[p-m+o]
-							Redimension/E=1/N=(dxFrDecode, dyFrDecode, nFr) pwPixData
+
+							if(isDecoded)
+								// Decoder decoded/reconstructed the data (non loss-less)
+								//
+								Redimension/E=1/N=(dxFrDecode, dyFrDecode) wDecode
+								iImg			= trunc(iPixBPerCh /(nBufPerFr *nImgPerFr)) 
+								pwPixData[][][iImg]	= wDecode[p][q]
+								Redimension/E=1/N=(dxFrDecode *dyFrDecode) wDecode	
+								
+//								if(iPixBPerCh < 10)
+//									print iImg, iPixBPerCh, nBufPerFr
+//								endif
+															
+							else	
+								// Decoder just resorted the pixel data
+								//
+								Redimension/E=1/N=(dxFrDecode *dyFrDecode *nFr *nImgPerFr) pwPixData
+								isFlipped		= (mod(trunc(iPixBPerCh /nImgPerFr), 2) && (nImgPerFr > 1))
+								iBufInImg		= mod(iPixBPerCh, nBufPerFr /nImgPerFr)
+								if(isFlipped)	
+									m			= (iPixBPerCh +1 -iBufInImg*2) *PixBLen			
+									n			= m +PixBLen -1 
+									offsInBuf	= mod(iPixBPerCh +1, nBufPerFr/nImgPerFr)*PixBLen								
+								else							
+									m			= iPixBPerCh *PixBLen			
+									n			= m +PixBLen -1 
+									offsInBuf	= iBufInImg *PixBLen								
+								endif	
+
+//								if(iPixBPerCh < 10)
+//									print m, n, offsInBuf, iPixBPerCh, nBufPerFr, sWave, isFlipped 
+//								endif
+								
+								pwPixData[m,n]	= wDecode[p -m +offsInBuf]
+								Redimension/E=1/N=(dxFrDecode, dyFrDecode, nFr *nImgPerFr) pwPixData 
+							endif	
 						endif
 						iPixB	+= 1
 						iCh		+= 1
@@ -929,16 +1025,16 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				switch(	pwNP[%User_ScanMode])
 					case ScM_scanMode_XYImage		:
 					case ScM_scanMode_XZYImage	:
-					case ScM_scanMode_ZXYImage	:
-						nFr	= (nPixB/nFrPerStep*PixBLen) /(nPixPerFr) 
-						Redimension/E=1/N=(dFast, dSlow1, nFr) pwPixData									
-						break			
+					case ScM_scanMode_ZXYImage	:					
+						nFr	= (nPixB/nFrPerStep*PixBLen) /(nPixPerFr) *nImgPerFr
+						Redimension/E=1/N=(dFast, dSlow1/nImgPerFr, nFr) pwPixData									
+						break
 
 					case ScM_scanMode_TrajectArb	:
 						// ##########################				
 						// Just a quick fix; TODO ==>
-						nFr	= (nPixB/nFrPerStep*PixBLen) /(nPixPerFr) 
-						Redimension/E=1/N=(dFast, dSlow1, nFr) pwPixData									
+						nFr	= (nPixB/nFrPerStep*PixBLen) /(nPixPerFr) *nImgPerFr
+						Redimension/E=1/N=(dFast, dSlow1/nImgPerFr, nFr) pwPixData									
 						// <==
 						break
 						
@@ -954,14 +1050,24 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 						case ScM_scanMode_XYImage		:
 						case ScM_scanMode_XZYImage	:	
 						case ScM_scanMode_ZXYImage	:					
-							// e.g. String,ScanPathFunc=XYScan2|5120|80|64|10|6;
-						 	// ##########################
-							// 2017-02-28 CHANGED TE ==>
-							// These parameters should have already been extracted
-						//	nFastPixRetr	= Str2Num(StringFromList(4, pwSP[%User_ScanPathFunc], "|"))
-						//	nFastPixOff		= Str2Num(StringFromList(5, pwSP[%User_ScanPathFunc], "|"))		
-							DeletePoints 0, nFastPixOff, pwPixData
-							DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
+							sprintf sWave, sPixDataDecodeFormat, iInCh
+							wave pwPixData	= $(sWave)
+							if(WaveExists(pwPixData))
+								if(isDecoded)
+									// ##########################				
+									// TODO ==>
+									// <==
+								else
+									DeletePoints 0, nFastPixOff, pwPixData
+									DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
+								endif	
+							endif	
+							sprintf sWaveRaw, sPixDataRawFormat, iInCh
+							wave pwPixData	= $(sWaveRaw)
+							if(WaveExists(pwPixData))
+								DeletePoints 0, nFastPixOff, pwPixData
+								DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
+							endif	
 							break
 							
 						case ScM_scanMode_TrajectArb	:
@@ -1391,6 +1497,9 @@ static function	ScMIO_HdrStr2Params (s)
 					nEDone	+= 1
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_nTrajParams))
 					pwNP[%User_nTrajParams]			= str2num(sVal)				
+					nEDone	+= 1
+				elseif(stringmatch(sTemp,	SCMIO_key_USER_nImgPerFr))
+					pwNP[%User_nImgPerFr]				= str2num(sVal)				
 					nEDone	+= 1
 				// <-- 
 				elseif(stringmatch(sTemp,	SCMIO_key_Unused0))
@@ -1841,6 +1950,7 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 	WAVE/T	pwSBList	= $(SCMIO_stimBufListName)
 	
 	// Check if fitting stimulus buffer is already in list
+	//
 	nSBList				= 0
 	isSBFound			= 0
 	do
@@ -1855,6 +1965,8 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 				
 				pwInfo[%stimBufIndex]		= nSBList
 				pwInfo[%hasCountMatrix]	= WaveExists($(SCMIO_scanDecCountMatrixName +"_" +Num2Str(nSBList)))
+				WAVE 	pwOther		= $(SCMIO_otherParamsWaveName +"_" +Num2Str(nSBList))
+				pwInfo[%pixDecodeMode]		= pwOther[%pixDecodeMode]
 
 				SetDataFolder saveDFR		
 				return pwInfo
@@ -1892,6 +2004,10 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 	// data for one frame
 	//
 	ScM_callScanPathFunc(sUserScanFFull)
+	if(!WaveExists($("StimX")))
+		print "### Something went wrong, please retry ..."
+		return $("StimX")
+	endif	
 	wave pwTempX				= $("StimX")	
 	wave pwTempY				= $("StimY")		
 	wave pwTempPC				= $("StimPC")	
@@ -1901,6 +2017,11 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 	Duplicate/O pwScanPathFuncParams, $(sTemp)
 	KillWaves/Z pwScanPathFuncParams
 	wave pwScanPathFuncParams	= $(sTemp)
+	
+	sTemp	= SCMIO_otherParamsWaveName +"_" +Num2Str(nSBList)
+	Make/O/N=(1) $(sTemp)
+	WAVE 	pwOther		= $(sTemp)
+	SetDimLabel 0, 0, 	pixDecodeMode,		pwOther
 	
 	// Copy scan path data into the stimulus buffer
 	//
@@ -1917,6 +2038,7 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 		FUNCREF ScM_ScanPathPrepDecodeProtoFunc fPrepDecode	= $(sUserScanFName + "_prepareDecode")
 		result 	= fPrepDecode(pwStimBufData, pwScanPathFuncParams)
 		pwInfo[%pixDecodeMode]		= result
+		pwOther[%pixDecodeMode]	= pwInfo[%pixDecodeMode]
 		
 		if(WaveExists(countMatrix))
 			sTemp	= SCMIO_scanDecCountMatrixName +"_" +Num2Str(nSBList)
