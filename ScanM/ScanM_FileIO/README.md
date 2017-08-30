@@ -2,25 +2,35 @@
 
 ### Release notes
 
-**ScanM v2.04**
+#### ScanM v2.04
 
-  - ``.SMH`` files now also contain information about the ETL settings.
-  - Modification of ``ScM_FileIO.ipf``:
-    Three cases of scan data are now considered:
+* Added more scan configurations that use the ETL, such as:
+  - xz-scans, with the x mirror as the fast scanner and the ETL moving the scan line step-wise vertically into
+    the tissue (vertical "slice"). 
+  - xz bi-directional scans, an improved version of the xz-scan, with the ETL not jumping back before the next frame
+    but stepping back up. Should eliminate ETL vibration (?) artifact observed in xz-scans. Still to be tested. 
+  - zx-scans, with the ETL modulated sinusoidally at 250 Hz and the x mirror slowly advancing across the tissue,
+    allowing to trade spatial for temporal resolution by adjusting the number of z "lines". Still being 
+    tested (Status: Image looks as if ETL cannot follow; need to check if indeed the ETL is too slow or if the 
+    lens driver does not drive the lens correctly).
+* Bug fix: ETL neutral voltage should now be kept in all phases of ScanM operation.
+* ``.SMH`` files now also contain information about the ETL settings.
+* Modification of ``ScM_FileIO.ipf``:
+  Many changes to accommodate the new scan configuration while staying compatible to older ScanM data files. 
+  Three cases of scan data are now considered:
 
-       - scans that are easily to reconstruct w/o information loss (e.g. standard xy scans)
+     - scans that are easily to reconstruct w/o information loss (e.g. standard xy scans)
 
-       - scans where the pixel data needs to be reordered but is loss-less (e.g. bidirectional xz scans)
+     - scans where the pixel data needs to be reordered but is loss-less (e.g. bidirectional xz scans)
        
-       - scans that cannot be easily represented on the screen and that require a decoder to reconstruct an image,
-          which represents an approximation (= down-sampled version) of the actually scan field. Here, the decoding 
-          may involve information loss (e.g. spiral scans).
+     - scans that cannot be easily represented on the screen and that require a decoder to reconstruct an image,
+        which represents an approximation (= down-sampled version) of the actually scan field. Here, the decoding 
+        may involve information loss (e.g. spiral scans).
 
-     As a consequence, when importing pixel data for scans of the last type, both the raw data is imported (e.g. 
-     ``wDataCh0_raw``) and a reconstructed representation (``wDataCh0``) is generated, using the original scan
-     path function. In addition, the ``ScM_FileIO.ipf`` regenerates the stimulus buffers and stores them in an own
-     data folder; these are then accessible for analysis scripts, e.g. to determine the exact timing of each pixel.
-
+   As a consequence, when importing pixel data for scans of the last type, both the raw data is imported (e.g. 
+   ``wDataCh0_raw``) and a reconstructed representation (``wDataCh0``) is generated, using the original scan
+   path function. In addition, the ``ScM_FileIO.ipf`` regenerates the stimulus buffers and stores them in an own
+   data folder; these are then accessible for analysis scripts, e.g. to determine the exact timing of each pixel.
 
 ### Installation
 
