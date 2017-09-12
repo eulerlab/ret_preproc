@@ -798,7 +798,6 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 				// are created
 				//
 				if(pwInfo[%isExtScanFunction] && (pwInfo[%pixDecodeMode] == SCM_PixDataDecoded)) 
-			//	if(pwInfo[%isExtScanFunction])
 					sPixDataRawFormat		= SCMIO_pixDataWaveRawFormat
 					sPixDataDecodeFormat	= SCMIO_pixDataWaveDecodeFormat
 					sprintf sWaveRaw, sPixDataRawFormat, iInCh
@@ -903,7 +902,6 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 						pwPixB[]	= pwPixBAllCh[p +iCh*PixBLen]
 						
 						if((isExtSPF && isDecoded) || !isExtSPF)
-					//	if(1)
 							// Standard scan path function was used or external scan
 							// path function with pixel decoding
 							//
@@ -1062,11 +1060,13 @@ function/T	ScMIO_LoadSMP (sFPath, sFName, doLog, pwSCIOParams)
 									DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
 								endif	
 							endif	
-							sprintf sWaveRaw, sPixDataRawFormat, iInCh
-							wave pwPixData	= $(sWaveRaw)
-							if(WaveExists(pwPixData))
-								DeletePoints 0, nFastPixOff, pwPixData
-								DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
+							if(!(stringmatch(sPixDataRawFormat, sPixDataDecodeFormat))) 
+								sprintf sWaveRaw, sPixDataRawFormat, iInCh
+								wave pwPixData	= $(sWaveRaw)
+								if(WaveExists(pwPixData))
+									DeletePoints 0, nFastPixOff, pwPixData
+									DeletePoints dFast-nFastPixOff-nFastPixRetr, nFastPixRetr, pwPixData
+								endif	
 							endif	
 							break
 							
