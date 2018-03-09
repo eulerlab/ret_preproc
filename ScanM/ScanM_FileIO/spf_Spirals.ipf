@@ -143,7 +143,8 @@ function radialScan(wScanPathFuncParams)
 		
 		StimX[itx * NumberofPoints, (itx + 1) * NumberofPoints - 1]	= pix_x[p - itx * NumberofPoints]
 		StimY[itx * NumberofPoints, (itx + 1) * NumberofPoints - 1]  = pix_y[p - itx * NumberofPoints]
-		StimPC[itx * NumberofPoints,(itx + 1) * NumberofPoints - 1] = StimPC1Offs[p - itx * NumberofPoints] * maxAO_V			
+	//	StimPC[itx * NumberofPoints,(itx + 1) * NumberofPoints - 1] = StimPC1Offs[p - itx * NumberofPoints] * maxAO_V			
+		StimPC[itx * NumberofPoints,(itx + 1) * NumberofPoints - 1] = StimPC1Offs[p - itx * NumberofPoints] 			
 	endfor
 	
 	// Copy spiral trajectory to each layer
@@ -167,7 +168,8 @@ function radialScan(wScanPathFuncParams)
 //		
 //		pwStimBufData[SCM_indexScannerX][itx*NumberofPoints,(itx+1)*NumberofPoints-1]	= pix_x[q -itx*NumberofPoints]
 //		pwStimBufData[SCM_indexScannerY][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = pix_y[q -itx*NumberofPoints]
-//		pwStimBufData[SCM_indexLaserBlk][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = StimPC1Offs[q -itx*NumberofPoints]*maxAO_V			
+//	//	pwStimBufData[SCM_indexLaserBlk][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = StimPC1Offs[q -itx*NumberofPoints]*maxAO_V			
+//		pwStimBufData[SCM_indexLaserBlk][itx*NumberofPoints,(itx+1)*NumberofPoints-1] = StimPC1Offs[q -itx*NumberofPoints]			
 //	endfor
 	// <==
 	

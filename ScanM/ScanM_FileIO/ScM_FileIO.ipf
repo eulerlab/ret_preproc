@@ -2028,7 +2028,8 @@ function/WAVE 	ScM_getStimBufInfo (sDF)
 	for(j=0; j<lenStimBuf; j+=1)
 		pwStimBufData[SCM_indexScannerX][j]	= pwTempX[q]
 		pwStimBufData[SCM_indexScannerY][j]	= pwTempY[q]
-		pwStimBufData[SCM_indexLaserBlk][j]	= pwTempPC[q] *AOCh3Scale
+	//	pwStimBufData[SCM_indexLaserBlk][j]	= pwTempPC[q] *AOCh3Scale
+ 		pwStimBufData[SCM_indexLaserBlk][j]	= (pwTempPC[q] > 0)?(ScM_TTLhigh):(ScM_TTLlow)
 		pwStimBufData[SCM_indexLensZ][j]		= pwTempZ[q] *pwPNum[%User_ETL_polarity_V]
 	endfor
 	
