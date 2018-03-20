@@ -1,3 +1,7 @@
 *.pyc
 dataProcessing/Python/postProcessing/join_all_n_plot.py
 dataProcessing/Python/postProcessing/plot_fields.py
+.smbdeleteAAA3725826
+
+# JetBrains Python IDE (PyCharm) stuff
+**/.idea/

@@ -76,7 +76,80 @@ def calc_area(rois,cellnum=1):
     
     
     return pix,row,col
-    
+
+
+def roi_area(rois, maskAreaUm=None, roiNum=None):
+    """Calculate ROI areas, based on the number of ROI mask pixels.
+    INPUT:
+    ------
+        rois: ndarray
+            ROI mask containing all the ROIS - filled with zeros where there is no ROI
+            and a number for every pixel corresponding to a specific ROI
+            (this number is negative by lab convention)
+        maskAreaUm: list
+            X- and y-dimension (in um) of the ROI mask.
+        cellnum: scalar, optional
+            Number ID of ROI to be measured.
+    OUPUT:
+    ------
+        roiAreas: ndarray, dtype=float
+            Vector of ROI areas in um^2.
+        nPix: ndarray, dtype=float
+            Corresponding number of pixels occupied by ROI in ROI mask.
+    """
+
+    ## Assume ROI mask area if not specified
+    if maskAreaUm is None:
+        maskAreaUm = [110, 110]
+        print('Assuming maskAreaUm =', maskAreaUm)
+
+    ## Redefine ROI mask
+    rois[rois == 1] = 0  # Mark non-ROI area with zeros (not ones)
+    rois = np.abs(rois)  # Mark ROI IDs with positive numbers (not negative ones)
+
+    ## TODO: Fill holes in ROI mask (e.g. cell-nuclei)
+
+
+    # If no particular ROI is specified, get all ROI areas
+    if roiNum is None:
+        roiAreas = np.zeros([np.unique(rois[rois != 0]).shape[0]])  # Note: exclude roi==0: empty area
+        nPix = np.zeros([np.unique(rois[rois != 0]).shape[0]])  # Note: exclude roi==0: empty area
+
+        ## Go through each ROI
+        for i, roi in enumerate(np.unique(rois[rois != 0])):
+            # Get number of pixels of single ROI mask
+            row, col = np.where(np.array(rois) == roi)
+            nPix[i] = len(row)  # = len(col)
+
+            ## Convert ROI pixels into real ROI area (in um)
+            # Total ROI mask size in number of pixels
+            maskAreaPix = np.array(rois.shape)
+            # Corresponding size per pixel in x- and y-dim
+            pixSize = maskAreaUm / maskAreaPix
+            # Pixel area (in um)
+            pixArea = pixSize[0] * pixSize[1]
+            # Real total ROI mask area
+            roiAreas[i] = nPix[i] * pixArea
+
+    # Else, if a particular ROI is specified, get only that area
+    elif roiNum is not None:
+        # Get number of pixels of single ROI mask
+        row, col = np.where(np.array(rois) == roiNum)
+        nPix = len(row)  # = len(col)
+
+        ## Convert ROI pixels into real ROI area (in um)
+        # Total ROI mask size in number of pixels
+        maskAreaPix = np.array(rois.shape)
+        # Corresponding size per pixel in x- and y-dim
+        pixSize = maskAreaUm / maskAreaPix
+        # Pixel area (in um)
+        pixArea = pixSize[0] * pixSize[1]
+        # Real total ROI mask area
+        roiAreas = nPix * pixArea
+
+    return roiAreas, nPix
+
+
 def calc_delay(stimDelay=17.0,sampRate=7.8):
     """function to calculate the delay in between the trigger and stimulator
     it requires samprate(hz) and stimdelay(ms). It outputs the delay in bins,
@@ -451,25 +524,27 @@ def detrend(sampRate=8,cutoff=0.1,length=125,trace=None):
     return s
 
 def direction_selectivity(matrix=None):
-    """check the direction selectivity of RGC cells that were stimulated
-    with moving bar stimulus.
-    use single value decomposition of the average response
-    matrix (timeXcondition).
-    inputs:
-        matrix: time X condition(moving bar angle) 
-    returns:
-        normResp: 
-            normalized response 
-        dsVector:
-            directive selection vector
-        tc:
-           time component  
+    """Check the direction selectivity of RGC cells that were stimulated with moving bar stimulus.
+    Uses single value decomposition (SVD) of the average response matrix (time X condition).
+    For theory, see Baden et al. 2016, Nature. Methods section.
 
-    TODO: debug difference between sorted vs unsorted input matrix (should be sorted)
-    """    
+    Inputs:
+        matrix: activity traces to bar stimulus [time X condition (moving bar angle)]
+        Conditions should already be sorted by direction to avoid confusion.
+
+    Returns:
+        dsVector:
+            Normalized directive selection vector
+        tc:
+           Time component
+        tcProj:
+           Projection of time component onto activity traces. One scalar per condition.
+
+    """
     
     # SVD analysis to determine direction and orientation selectivity
     U,S,V = np.linalg.svd(matrix)
+    V = V.T # Transpose V as np.linalg.svd() returns V transposed relative to MATLAB svd()
 
     # ?
     sv = np.sign(np.mean(np.sign(V[:,0])))
@@ -1421,13 +1496,13 @@ def testTuning(dirs, counts, per):
         
     @author: Andre M Chagas
     """
-    iter = 10000  # Set number of iterations
-    [N, M] = np.shape(counts)
+    iter = 1000  # Set number of iterations
+    [M, N] = np.shape(counts)
     k = copy.deepcopy(dirs)
     counts1 = copy.deepcopy(counts) # Copy due to permutation later
 
     # Complex exponential projection
-    v = np.exp(per * 1j * k) / np.sqrt(M)
+    v = np.exp(per * 1j * k) / np.sqrt(N)
     q = np.abs(np.inner(np.mean(counts1, axis=0), v))
 
     # Make q-distribution by permuting trials, and get p-value as the percentile of the actual q value
@@ -1440,7 +1515,7 @@ def testTuning(dirs, counts, per):
         # np.random.shuffle(counts1)
         counts1 = counts1.flatten()
         np.random.shuffle(counts1)
-        counts1 = counts1.reshape((N, M))
+        counts1 = counts1.reshape((M, N))
 
         # Project shuffled trials onto complex exponential
         qTmp = np.abs(np.inner(np.mean(counts1, axis=0), v))
@@ -1576,7 +1651,8 @@ def process_bg(allData):
 def process_ds(allData, suffix):
     """
     TODO:
-        - make function sorting trials by condition and direction
+        - make process_ds flexible for use without suffix and simple array of bar responses
+        - make subfunction sorting trials by condition and direction
             > facilitates all processes downstream
         - check if need to normalize single trials if not using snippets
     """
@@ -1632,7 +1708,7 @@ def process_ds(allData, suffix):
 
     ## Get direction selectivity vector
     # direction_selectivity uses Singular Value Decomposition (SVD)
-    [dsVector, tc, _] = direction_selectivity(matrix=dsMatrix)
+    dsVector, tc, _ = direction_selectivity(matrix=dsMatrix)
 
     # Get projection of time-component onto traces using SVD for tuning significance test
     tcProj = np.inner(resMatrixSort[:,:,:].T, tc)
@@ -1709,6 +1785,25 @@ def process_ds(allData, suffix):
     allData = allData.append(tStim)
     
     return allData
+
+def ds_ana(traces):
+    """
+    INPUT:
+    OUTPUT:
+    TODO:
+        - start implementing function
+        - make process_ds flexible for use without suffix and with simple array of bar responses
+        - make subfunction sorting trials by condition and direction
+            > facilitates all processes downstream
+        - check if need to normalize single trials if not using snippets
+        - give single sorted traces as ouput [time, trial, condition]
+            > make dirIdx into array and transpose: dirIdx = np.array(...); dirIdx.T
+        - for many outputs: return dict or namedtuple
+        - return:
+            - sorted single traces
+            - directions?
+    """
+
 
 def split_clusters_ds_non_ds(tempNatData,nonDSClusters):
     
