@@ -142,6 +142,7 @@ constant		ScM_scanMode_TrajectArb		= 6
 constant		ScM_scanType_timelapsed		= 10
 constant		ScM_scanType_zStack			= 11
 // ...
+strconstant	SCM_ScanSeqParamWaveName		= "wScanSeqParams"
 #endif
 
 strconstant 	ScM_CFDNoteStart       		= "CFD_START"	
