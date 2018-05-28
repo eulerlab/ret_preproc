@@ -97,7 +97,7 @@ variable ff,xx,yy,rr,tt
 variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
 
 variable nTriggers = 0
-for (ff=0;ff<nF-1;ff+=1)
+for (ff=0;ff<(nF-1);ff+=1) // AV 20180525 changed from 1098 to (nF-1)
 	for (yy=0;yy<nY;yy+=1)
 		for (xx=0; xx<nX; xx+=1) // KF 20160310; trigger sometimes only few pixel long
 			if (InputTriggers[xx][yy][ff]>trigger_threshold)
@@ -141,15 +141,7 @@ endif
 redimension /N=(nTriggers) OutputTriggerValues // Andre 2016 04 14
 redimension /N=(nTriggers) OutputTriggerTimes
 
-// Calculate time of scan for each pixel in recording
-for (xx=0;xx<nX;xx+=1)
-	for (yy=0;yy<nY;yy+=1)
-		for (ff=0; ff<nF; ff+=1)
-			// This function will need to be modified for more complex scan paths
-			OutputPixelTimes[xx][yy][ff] = r*nY*2/1000 + p*LineDuration + q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000
-		endfor 
-	endfor
-endfor
+OutputPixelTimes[][][]=r*nY*LineDuration+p*LineDuration+q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000 //AV 20180525 works better in Igor7/8
 
 // extract traces according to ROIs
 for (rr=0;rr<nRois;rr+=1)
@@ -213,12 +205,12 @@ if (Display_traces==1)
 	endfor
 	
 	// baseline window
-	•ShowTools/A arrow
-	•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
-	•DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
+	ShowTools/A arrow
+	SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
+	DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
 	if (IgnoreLastXSeconds>0)
-		•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,65280),dash= 2,fillpat= 0;DelayUpdate
-		•DrawRect OutputTraceTimes[nF-1][0]-IgnoreLastXseconds,-TriggerHeight_Display,OutputTraceTimes[nF-1][0],TriggerHeight_Display
+		SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,65280),dash= 2,fillpat= 0;DelayUpdate
+		DrawRect OutputTraceTimes[nF-1][0]-IgnoreLastXseconds,-TriggerHeight_Display,OutputTraceTimes[nF-1][0],TriggerHeight_Display
 	endif
 
 
