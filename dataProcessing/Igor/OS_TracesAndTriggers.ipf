@@ -52,6 +52,10 @@ variable SkipLastTrigger = OS_Parameters[%Skip_Last_Trigger] // KF 20160310
 variable TriggerMode = OS_Parameters[%Trigger_Mode]
 variable StimulatorDelay = OS_Parameters[%StimulatorDelay]
 
+//use to identify single pixel analysis
+variable ROI_mindiameter = OS_Parameters[%ROI_mindiameter]
+variable ROI_maxdiameter = OS_Parameters[%ROI_maxdiameter]
+
 // data handling
 wave wParamsNum // Reads data-header
 string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
@@ -79,17 +83,22 @@ make /o/n=(nF) OutputTriggerValues = NaN
 make /o/n=(nX,nY,nF) OutputPixelTimes = NaN
 variable FrameDuration = nY * LineDuration
 
-// call SARFIA function GeoC to get ROI positions
+
+//AV 20180516 modified from here forward to include an option for single pixel ROIs
+
 setscale x, 0, nX, ROIs // so that Geometric centre reads out pixel not microns KF 20160310
 setscale y, 0, nY, ROIs
-GeometricCenter(ROIs)
 // calculate Pixel / ROI sizes in microns
 variable zoom = wParamsNum(30) // extract zoom
 variable px_Size = (0.65/zoom * 110)/nX // microns
 setscale /p x,-nX/2*px_Size,px_Size,"µm" ROIs // scale ROIs back to what they were - related to KF 20160310 above - fix by Tom
 setscale /p y,-nY/2*px_Size,px_Size,"µm"  ROIs
 
-wave GeoC
+if (ROI_maxdiameter>1)
+// call SARFIA function GeoC to get ROI positions FOR MULTIPIXEL ROIS
+	GeometricCenter(ROIs)
+	wave GeoC
+endif
 
 variable ff,xx,yy,rr,tt
 
@@ -97,7 +106,7 @@ variable ff,xx,yy,rr,tt
 variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
 
 variable nTriggers = 0
-for (ff=0;ff<(nF-1);ff+=1) // AV 20180525 changed from 1098 to (nF-1)
+for (ff=0;ff<nF-1;ff+=1) // AV 20180515 changed from 1098
 	for (yy=0;yy<nY;yy+=1)
 		for (xx=0; xx<nX; xx+=1) // KF 20160310; trigger sometimes only few pixel long
 			if (InputTriggers[xx][yy][ff]>trigger_threshold)
@@ -141,26 +150,53 @@ endif
 redimension /N=(nTriggers) OutputTriggerValues // Andre 2016 04 14
 redimension /N=(nTriggers) OutputTriggerTimes
 
-OutputPixelTimes[][][]=r*nY*LineDuration+p*LineDuration+q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000 //AV 20180525 works better in Igor7/8
+// Calculate time of scan for each pixel in recording
+//for (xx=0;xx<nX;xx+=1)
+//	for (yy=0;yy<nY;yy+=1)
+//		for (ff=0; ff<nF; ff+=1)
+//			// This function will need to be modified for more complex scan paths
+//			OutputPixelTimes[xx][yy][ff] = ff*nY*LineDuration + xx*LineDuration + yy*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000 //AV 2018.05.18 modified to make compatible with Igor 7
+//		endfor 
+//	endfor
+//endfor
+
+OutputPixelTimes[][][] = r*nY*LineDuration + p*LineDuration +q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000
 
 // extract traces according to ROIs
-for (rr=0;rr<nRois;rr+=1)
-	variable ROI_value = (rr+1)*-1 // ROIs in Mask are coded as negative starting from -1 (SARFIA standard)
-	variable ROI_size = 0
-	for (xx=0;xx<nX;xx+=1)
-		for (yy=0;yy<nY;yy+=1)
-			if (ROIs[xx][yy]==ROI_value)
-				ROI_size+=1
-				OutputTraces_raw[][rr]+=InputData[xx][yy][p] // add up each pixel of a ROI
+if (ROI_maxdiameter > 1)
+	for (rr=0;rr<nRois;rr+=1)
+		variable ROI_value = (rr+1)*-1 // ROIs in Mask are coded as negative starting from -1 (SARFIA standard)
+		variable ROI_size = 0
+		for (xx=0;xx<nX;xx+=1)
+			for (yy=0;yy<nY;yy+=1)
+				if (ROIs[xx][yy]==ROI_value)
+					ROI_size+=1
+					OutputTraces_raw[][rr]+=InputData[xx][yy][p] // add up each pixel of a ROI
+				endif
+			endfor
+		endfor
+		OutputTraces_raw[][rr]/=ROI_size // now is average activity of ROI
+		make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
+		Wavestats/Q BaselineTrace
+		OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
+		OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration  + StimulatorDelay/1000 // correct each ROIs timestamp by it's Y position in the scan // use y values not x values KF 20160310 // and by stimulator delay!
+	endfor
+	
+else //keep everything as single pixel ROIs
+	variable roicount = 0
+	for(yy=0;yy<nY;yy+=1)
+		for (xx=0;xx<nX;xx+=1)	
+			if (ROIs[xx][yy]<0)
+				OutputTraces_raw[][roicount]=InputData[xx][yy][p]
+				make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace = OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][roicount]
+				Wavestats/Q BaselineTrace
+				OutputTraces_zscore[][roicount]=(OutputTraces_raw[p][roicount]-V_Avg)/V_SDev
+				OutputTraceTimes[][roicount]=OutputPixelTimes[xx][yy][p]
+				roicount+=1
 			endif
 		endfor
 	endfor
-	OutputTraces_raw[][rr]/=ROI_size // now is average activity of ROI
-	make /o/n=(nSeconds_prerun_reference/(nY*LineDuration)) BaselineTrace =OutputTraces_raw[p+Ignore1stXseconds/FrameDuration][rr]
-	Wavestats/Q BaselineTrace
-	OutputTraces_zscore[][rr]=(OutputTraces_raw[p][rr]-V_Avg)/V_SDev
-	OutputTraceTimes[][rr]=p*nY*LineDuration + GeoC[rr][1]*LineDuration  + StimulatorDelay/1000 // correct each ROIs timestamp by it's Y position in the scan // use y values not x values KF 20160310 // and by stimulator delay!
-endfor
+endif
 
 // export handling
 duplicate /o OutputTraces_raw $output_name1
