@@ -4,7 +4,7 @@
 function ROI_qualitymask(threshold)
 
 variable threshold
-wave ROIs, QualityValues, Averages0
+wave ROIs, QualityValues
 variable roinum, xx, yy
 variable nX = DimSize(ROIs,0)
 variable nY = DimSize(ROIs,1)

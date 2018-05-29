@@ -62,7 +62,7 @@ for (xx=X_cut;xx<nX;xx+=1)
 endfor
 
 StatsQuantiles/Q Stack_SD
-variable SDthresh = V_Q25 //threshold standard deviation to include in analysis, normally V_Q25
+variable SDthresh = V_Q75 //threshold standard deviation to include in analysis, normally V_Q25
 
 variable countdown = -1
 
