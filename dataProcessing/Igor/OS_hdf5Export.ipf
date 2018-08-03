@@ -3,7 +3,7 @@
 Function OS_hdf5Export()
 	Variable fileID
 	WAVE/z OS_Parameters,ROIs,Traces0_raw,Traces0_znorm,Tracetimes0,Triggertimes,Triggervalues,wDataCh0,wDataCh1,wDataCh2
-	WAVE/z stack_ave, stack_ave_report, GeoC, Snippets0,SnippetsTimes0,wParamsNum,wParamsStr
+	WAVE/z stack_ave, stack_ave_report, GeoC, Snippets0,SnippetsTimes0,wParamsNum,wParamsStr, Depth
 	NewPath targetPath
 	string pathName = "targetPath"
 	HDF5CreateFile/P=$pathName /O /Z fileID as GetDataFolder(0)+".h5"
@@ -16,6 +16,10 @@ Function OS_hdf5Export()
 	
 	if (waveexists(stack_ave))
 		HDF5SaveData /O /Z stack_ave, fileID // Mean image across the stack in the data channel 0
+	endif
+	
+	if (waveexists(Depth))
+		HDF5SaveData /O /Z Depth, fileID // Mean image across the stack in the data channel 0
 	endif
 	
 	if (waveexists($"Triggervalues")==1)

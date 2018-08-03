@@ -26,10 +26,11 @@ endif
 wave OS_Parameters
 // 2 //  check for Detrended Data stack
 variable Channel = OS_Parameters[%Data_Channel]
-if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
-	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
-	OS_DetrendStack()
-endif
+// Dont check for detrended stack, as it is not used here. KF
+//if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
+//	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
+//	OS_DetrendStack()
+//endif
 // 3 //  check for ROI_Mask
 if (waveexists($"ROIs")==0)
 	print "Warning: ROIs wave not yet generated - doing that now (using correlation algorithm)..."
@@ -54,7 +55,7 @@ variable FilterLength = OS_Parameters[%Noise_FilterLength_s]
 
 // data handling
 wave ROIs
-string input_name = "wDataCh"+Num2Str(Channel)+"_detrended"
+string input_name = "wDataCh"+Num2Str(Channel)//+"_detrended"
 string traces_name = "Traces"+Num2Str(Channel)+"_raw"
 if (use_znorm==1)
 	traces_name = "Traces"+Num2Str(Channel)+"_znorm"
@@ -238,7 +239,7 @@ if (Display_Stuff==1)
 endif	
 
 // cleanup
-killwaves NoiseStimulus_Lineprecision, CurrentFilter, CurrentTrace, CurrentTrace_DIF, nEvents, Filter_SDs, InputStack,InputTraces,InputTraceTimes,M_Colors
-killwaves M_VT, M_U, CurrentMatrix, SVDKernels_Space1D, W_W,CurrentSVDTimeKernel,CurrentSDTimeKernel,W_Statslinearcorrelationtest,SVDKernels_Time,SVDKernels_Space,currentSVD
+//killwaves NoiseStimulus_Lineprecision, CurrentFilter, CurrentTrace, CurrentTrace_DIF, nEvents, Filter_SDs, InputStack,InputTraces,InputTraceTimes,M_Colors
+//killwaves M_VT, M_U, CurrentMatrix, SVDKernels_Space1D, W_W,CurrentSVDTimeKernel,CurrentSDTimeKernel,W_Statslinearcorrelationtest,SVDKernels_Time,SVDKernels_Space,currentSVD
 
 end

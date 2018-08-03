@@ -11,10 +11,11 @@ endif
 wave OS_Parameters
 // 2 //  check for Detrended Data stack
 variable Channel = OS_Parameters[%Data_Channel]
-if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
-	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
-	OS_DetrendStack()
-endif
+// Dont check for detrended stack, as it is not used here. KF
+//if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
+//	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
+//	OS_DetrendStack()
+//endif
 // 3 //  check for ROI_Mask
 if (waveexists($"ROIs")==0)
 	print "Warning: ROIs wave not yet generated - doing that now (using correlation algorithm)..."

@@ -59,7 +59,7 @@ Multithread OutputData[][][]-=InputData[p][q][r]-Mean_image[p][q]
 duplicate /o OutputData $output_name
 
 // cleanup
-killwaves CurrentTrace,InputData,OutputData,mean_image
+//killwaves CurrentTrace,InputData,OutputData,mean_image
 
 // outgoing dialogue
 print " complete..."

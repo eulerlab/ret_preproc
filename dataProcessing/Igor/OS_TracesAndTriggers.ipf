@@ -26,10 +26,11 @@ endif
 wave OS_Parameters
 // 2 //  check for Detrended Data stack
 variable DataChannel = OS_Parameters[%Data_Channel]
-if (waveexists($"wDataCh"+Num2Str(DataChannel)+"_detrended")==0)
-	print "Warning: wDataCh"+Num2Str(DataChannel)+"_detrended wave not yet generated - doing that now..."
-	OS_DetrendStack()
-endif
+// Dont check for detrended stack, as it is not used here. KF
+//if (waveexists($"wDataCh"+Num2Str(DataChannel)+"_detrended")==0)
+//	print "Warning: wDataCh"+Num2Str(DataChannel)+"_detrended wave not yet generated - doing that now..."
+//	OS_DetrendStack()
+//endif
 // 3 //  check for ROI_Mask
 if (waveexists($"ROIs")==0)
 	print "Warning: ROIs wave not yet generated - doing that now (using correlation algorithm)..."
@@ -54,7 +55,7 @@ variable StimulatorDelay = OS_Parameters[%StimulatorDelay]
 
 // data handling
 wave wParamsNum // Reads data-header
-string input_name1 = "wDataCh"+Num2Str(DataChannel)+"_detrended"
+string input_name1 = "wDataCh"+Num2Str(DataChannel)//+"_detrended" Use raw data, not detrended data 
 string input_name2 = "wDataCh"+Num2Str(TriggerChannel)
 string output_name1 = "Traces"+Num2Str(DataChannel)+"_raw"
 string output_name2 = "Traces"+Num2Str(DataChannel)+"_znorm"
@@ -73,9 +74,9 @@ variable nRois = Wavemin(ROIs)*(-1)
 make /o/n=(nF,nRois) OutputTraces_raw = 0
 make /o/n=(nF,nRois) OutputTraces_zscore = 0
 make /o/n=(nF,nRois) OutputTraceTimes = 0
-make /o/n=(nF) OutputTriggerTimes = NaN
-make /o/n=(nF) OutputTriggerTimes_Frame = NaN
-make /o/n=(nF) OutputTriggerValues = NaN
+make /o/n=(2000) OutputTriggerTimes = NaN
+make /o/n=(2000) OutputTriggerTimes_Frame = NaN
+make /o/n=(2000) OutputTriggerValues = NaN
 make /o/n=(nX,nY,nF) OutputPixelTimes = NaN
 variable FrameDuration = nY * LineDuration
 
@@ -95,9 +96,10 @@ variable ff,xx,yy,rr,tt
 
 // find Triggers
 variable lineskip_after_trigger = seconds_skip_after_trigger/LineDuration
+print lineskip_after_trigger
 
 variable nTriggers = 0
-for (ff=0;ff<(nF-1);ff+=1) // AV 20180525 changed from 1098 to (nF-1)
+for (ff=0;ff<nF-1;ff+=1) // nF-1
 	for (yy=0;yy<nY;yy+=1)
 		for (xx=0; xx<nX; xx+=1) // KF 20160310; trigger sometimes only few pixel long
 			if (InputTriggers[xx][yy][ff]>trigger_threshold)
@@ -141,7 +143,15 @@ endif
 redimension /N=(nTriggers) OutputTriggerValues // Andre 2016 04 14
 redimension /N=(nTriggers) OutputTriggerTimes
 
-OutputPixelTimes[][][]=r*nY*LineDuration+p*LineDuration+q*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000 //AV 20180525 works better in Igor7/8
+// Calculate time of scan for each pixel in recording
+for (xx=0;xx<nX;xx+=1)
+	for (yy=0;yy<nY;yy+=1)
+		for (ff=0; ff<nF; ff+=1)
+			// This function will need to be modified for more complex scan paths
+			OutputPixelTimes[xx][yy][ff] = ff*nY*2/1000 + xx*LineDuration + yy*LineDuration/wParamsNum[%User_dxPix] + StimulatorDelay/1000
+		endfor 
+	endfor
+endfor
 
 // extract traces according to ROIs
 for (rr=0;rr<nRois;rr+=1)
@@ -205,12 +215,12 @@ if (Display_traces==1)
 	endfor
 	
 	// baseline window
-	ShowTools/A arrow
-	SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
-	DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
+	•ShowTools/A arrow
+	•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (65280,0,0),dash= 2,fillpat= 0;DelayUpdate
+	•DrawRect Ignore1stXseconds,-TriggerHeight_Display,Ignore1stXseconds+nSeconds_prerun_reference,TriggerHeight_Display
 	if (IgnoreLastXSeconds>0)
-		SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,65280),dash= 2,fillpat= 0;DelayUpdate
-		DrawRect OutputTraceTimes[nF-1][0]-IgnoreLastXseconds,-TriggerHeight_Display,OutputTraceTimes[nF-1][0],TriggerHeight_Display
+		•SetDrawEnv xcoord= bottom,ycoord= TracesY,linefgc= (0,0,65280),dash= 2,fillpat= 0;DelayUpdate
+		•DrawRect OutputTraceTimes[nF-1][0]-IgnoreLastXseconds,-TriggerHeight_Display,OutputTraceTimes[nF-1][0],TriggerHeight_Display
 	endif
 
 

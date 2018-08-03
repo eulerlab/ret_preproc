@@ -11,10 +11,11 @@ endif
 wave OS_Parameters
 // 2 //  check for Detrended Data stack
 variable Channel = OS_Parameters[%Data_Channel]
-if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
-	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
-	OS_DetrendStack()
-endif
+// Dont check for detrended stack, as it is not used here. KF
+//if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
+//	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
+//	OS_DetrendStack()
+//endif
 // 3 //  check for ROI_Mask
 if (waveexists($"ROIs")==0)
 	print "Warning: ROIs wave not yet generated - doing that now (using correlation algorithm)..."
@@ -41,7 +42,7 @@ variable AverageStack_dF = OS_Parameters[%AverageStack_dF]
 variable X_cut = OS_Parameters[%LightArtifact_cut]
 
 // data handling
-string input_name = "wDataCh"+Num2Str(Channel)+"_detrended"
+string input_name = "wDataCh"+Num2Str(Channel)//+"_detrended"
 string traces_name = "Traces"+Num2Str(Channel)+"_raw"
 if (use_znorm==1)
 	traces_name = "Traces"+Num2Str(Channel)+"_znorm"
@@ -93,7 +94,7 @@ variable SnippetDuration = Triggertimes[TriggerMode+Ignore1stXTriggers]-Triggert
 variable Last_Snippet_Length = last_data_time_allowed-Triggertimes[nTriggers-1]
 
 if (Last_Snippet_Length<SnippetDuration)
-	IgnoreLastXTriggers = TriggerMode
+	//IgnoreLastXTriggers = TriggerMode // This cuts the last loop, delete. KF
 endif
 variable nLoops = floor((nTriggers-Ignore1stXTriggers-IgnoreLastXTriggers) / TriggerMode)
 

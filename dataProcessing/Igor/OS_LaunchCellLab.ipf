@@ -19,16 +19,17 @@ endif
 wave OS_Parameters
 // 2 //  check for Detrended Data stack
 variable Channel = OS_Parameters[%Data_Channel]
-if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
-	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
-	OS_DetrendStack()
-endif
+// Dont check for detrended stack, as it is not used here. KF
+//if (waveexists($"wDataCh"+Num2Str(Channel)+"_detrended")==0)
+//	print "Warning: wDataCh"+Num2Str(Channel)+"_detrended wave not yet generated - doing that now..."
+//	OS_DetrendStack()
+//endif
 
 // flags from "OS_Parameters"
 variable Display_RoiMask = OS_Parameters[%Display_Stuff]
 
 // data handling
-string input_name = "wDataCh"+Num2Str(Channel)+"_detrended"
+string input_name = "wDataCh"+Num2Str(Channel)//+"_detrended"
 duplicate /o $input_name InputData
 variable nX = DimSize(InputData,0)
 variable nY = DimSize(InputData,1)
