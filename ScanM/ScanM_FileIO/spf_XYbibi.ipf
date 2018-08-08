@@ -1,16 +1,16 @@
 // -----------------------------------------------------------------------------------		
 //	Project			: ScanMachine (ScanM)
 //	Module type		: Scan path function/decoder file (spf_*.ipf):
-//	Function		: XZ slice, bidirectional
+//	Function		: XY bidirectional (both x and y)
 //	Author			: Thomas Euler
-//	Copyright		: (C) CIN/Uni Tübingen 2016-2017
-//	History			: 2017-08-17	
+//	Copyright		: (C) CIN/Uni Tübingen 2016-2018
+//	History			: 2018-02-21	
 //
 // ---------------------------------------------------------------------------------- 
 #pragma rtGlobals=1	
 
 // ---> START OF USER SECTION
-#pragma ModuleName	= spf_XZbi_slice
+#pragma ModuleName	= spf_XYbibi
 // <--- END OF USER SECTION 
 
 // -----------------------------------------------------------------------------------		
@@ -29,36 +29,30 @@
 //		StimPC[]				:=	AO channel 2, laser blanking signal (TTL levels)
 //		StimZ[]					:= 	AO channel 3, z axis (i.e. ETL)
 // ---------------------------------------------------------------------------------- 
-function xzBiSlice (wScanPathFuncParams)
+function xyBibi (wScanPathFuncParams)
 	wave		wScanPathFuncParams
 
-	variable	nPntsTotal, dX, dZ, dZTotal
+	variable	nPntsTotal, dXTotal, dY
 	variable	nPntsRetrace, nPntsLineOffs
-	variable	aspectRatioFr	, iChFastScan
-	variable	zVMin, zVMax, zVMinDef, zVMaxDef, zVZero
-	variable	xVMax, nB, iB, iP
-	variable	nStimPerFr, xInc1, iX
-	variable	dXScan, iZ, zVLastLine, zNew
-	variable	dxFrDecoded, dyFrDecoded, nImgPerFrame
+	variable	aspectRatioFr 
+	variable	xVMax, yVMax, dxScan
+	variable	nStimPerFr
+	variable	iY, iX, noYScan, nB, iB, iP
 	
 	// ---> INPUT
 	// Retrieve parameters about the scan configuration 
 	//
 	nPntsTotal		= wScanPathFuncParams[0]	// = dx*dy*dz *nStimPerFr
-	dX				= wScanPathFuncParams[1]	// cp.dXPixels
-	dZTotal			= wScanPathFuncParams[3]	// cp.dZPixels
-	nPntsRetrace   = wScanPathFuncParams[4]	// cp.nPixRetrace, # of points per line used for retrace	
-	nPntsLineOffs	= wScanPathFuncParams[5]	// cp.nXPixLineOffs, # of points per line before pixels are aquired
-//	nPntsLineOffs	= wScanPathFuncParams[6]	// cp.nYPixLineOffs, ...
-//	nPntsLineOffs	= wScanPathFuncParams[7]	// cp.nZPixLineOffs, ...
-	aspectRatioFr	= wScanPathFuncParams[8]	// cp.aspectRatioFrame
-//	iChFastScan		= wScanPathFuncParams[9]	// cp.iChFastScan
-	zVMinDef		= wScanPathFuncParams[10]	// cp.minDefAO_Lens_V
-	zVMaxDef		= wScanPathFuncParams[11]	// cp.maxDefAO_Lens_V
-	nStimPerFr		= wScanPathFuncParams[12]	// cp.stimBufPerFr
-	dxFrDecoded		= wScanPathFuncParams[13]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
-	dyFrDecoded		= wScanPathFuncParams[14]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
-	nImgPerFrame	= wScanPathFuncParams[15]	// cp.nImgPerFrame, # of images per frame
+	dXTotal			= wScanPathFuncParams[1]	// cp.dXPixels
+	dY				= wScanPathFuncParams[2]	// cp.dYPixels	
+	nPntsRetrace   = wScanPathFuncParams[3]	// cp.nPixRetrace, # of points per line used for retrace	
+	nPntsLineOffs	= wScanPathFuncParams[4]	// cp.nXPixLineOffs, # of points per line before pixels are aquired
+	noYScan			= wScanPathFuncParams[5]	// noYScan
+	aspectRatioFr	= wScanPathFuncParams[6]	// cp.aspectRatioFrame
+	nStimPerFr		= wScanPathFuncParams[7]	// cp.stimBufPerFr
+//	dxFrDecoded		= wScanPathFuncParams[8]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
+//	dyFrDecoded		= wScanPathFuncParams[9]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
+//	nImgPerFrame	= wScanPathFuncParams[10]	// cp.nImgPerFrame, # of images per frame
 	// <---
 
  	// ---> OUTPUT
@@ -71,54 +65,30 @@ function xzBiSlice (wScanPathFuncParams)
 	StimZ			= 0
 	// <---
 
-	// Initialize 
+	// Initialise
 	//
-	dXScan			= dX -nPntsRetrace
-	dZ         		= dZTotal /nImgPerFrame
-	if(dX > dZ)
+	dxScan			= dXTotal -nPntsRetrace
+	if(dXTotal > dy)
 		xVMax		= 0.5
-		zVMax		= dZ/(dxScan *aspectRatioFr) *(zVMaxDef-zVMinDef) /2
+		yVMax		= dy/(dxScan *aspectRatioFr) /2
 	else	 
-		xVMax		= (dxScan *aspectRatioFr)/dz /2
-		zVMax		= (zVMaxDef-zVMinDef) /2
+		xVMax		= (dxScan *aspectRatioFr)/dy /2
+		yVMax		= 0.5
 	endif	
-	xInc1			= 2*xVMax /(nPntsRetrace +1)
 	
-	for(iZ=0; iZ<dZTotal; iZ+=1)
+	for(iY=0; iY<dy; iY+=1)
 		// Define scan points
 		//
-		for(iX=0; iX<dX; iX+=1)
-			if(iX < dxScan)
-				StimX[iZ*dx +iX]	= 2*xVMax *iX/(dxScan -1) -xVMax
-			else	
-				StimX[iZ*dx +iX]	= xVMax -xInc1 *(ix -dxScan +1)
-			endif	
-
-			if(iZ < dZ)
-				if((iX < dxScan) || (iZ == (dZ-1)))		
-					zNew		= iZ
-				else	
-					zNew		= iZ +1
-				endif		
-			elseif(iZ == dZ)
-				if(iX < dxScan)
-					zNew		= iZ -1
-				else	
-					zNew		= dZTotal -iZ -2
-				endif		
-			elseif(iZ == (dZTotal-1))
-				zNew			= dZTotal -iZ -1
+		for(iX=0; iX<dXTotal; iX+=1)
+			if(mod(iY, 2) == 0)
+				StimX[iY*dXTotal +iX]	= 2*xVMax *iX/(dXTotal -1) -xVMax
 			else
-				if(iX < dxScan)
-					zNew		= dZTotal -iZ -1
-				else
-					zNew 		= dZTotal -iZ -2
-				endif	
+				StimX[iY*dXTotal +iX]	= 2*xVMax *(dXTotal -iX)/(dXTotal -1) -xVMax
 			endif	
-			StimZ[iZ*dx +iX]	= 2*zVMax *zNew/(dZ-1) -zVMax			
+			StimY[iY*dXTotal +iX]		= 2*yVMax *(iY/(dy -1)) -yVMax				
 			
-			if((iX >= nPntsLineOffs) && (iX < dxScan))
-				StimPC[iZ*dx +iX]	= ScM_TTLhigh
+			if((iX >= nPntsLineOffs) && (iX < (dXTotal -nPntsRetrace)))
+				StimPC[iY*dXTotal +iX]	= ScM_TTLhigh
 			endif	
 		endfor
 	endfor	
@@ -127,45 +97,15 @@ function xzBiSlice (wScanPathFuncParams)
 	for(iB=1; iB<nStimPerFr; iB+=1)
 		iP	= nB*iB
 		StimX[iP, iP+nB-1]  		= StimX[p-iP]	
-		StimZ[iP, iP+nB-1]  		= StimZ[p-iP]
+		StimY[iP, iP+nB-1]  		= StimY[p-iP]
 		StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
 	endfor
-	StimZ	+= 	(zVMaxDef-zVMinDef) /2 +zVMinDef
+	if(noYScan == 1)
+		StimY = 0
+	endif	
 	
-#ifdef isUseBananaScans	
-	// ##########################
-	// 2018-07-05 ADDED TE ==>
-	//
-	Warp(StimX, StimZ, wScanPathFuncParams, xVMax, zVMax, "xzBiSlice")
-	// <==
-#endif
+	Smooth/E=1/S=2 27, StimX
 end	
-
-// -----------------------------------------------------------------------------------		
-//Window GraphStimBuf() : Graph
-//	PauseUpdate; Silent 1		// building window...
-//	String fldrSav0= GetDataFolder(1)
-//	SetDataFolder root:ScM_CONFIGS:xzbi_slice64x64_2msLn_25os:
-//	Display /W=(35.25,42.5,853.5,251) wStimBufData[0][*]
-//	AppendToGraph/L=left2 wStimBufData[3][*]
-//	AppendToGraph/L=left3 wStimBufData[2][*]
-//	SetDataFolder fldrSav0
-//	ModifyGraph margin(left)=85
-//	ModifyGraph rgb(wStimBufData#1)=(0,15872,65280),rgb(wStimBufData#2)=(43520,43520,43520)
-//	ModifyGraph lblPos(left)=52
-//	ModifyGraph freePos(left2)=31
-//	ModifyGraph freePos(left3)=68
-//	SetAxis left -0.781509464685528,1.14811398330959
-//	SetAxis bottom 4851.62453682156,5520.59081711661
-//	SetAxis left2 -1.12352941176471,-0.00588235294117645
-//	SetAxis left3 0.54622633828618,5.37028495827397
-//	Cursor/P A wStimBufData#1 10224
-//	ShowInfo
-//	ShowTools/A
-//	SetDrawLayer UserFront
-//	SetDrawEnv xcoord= bottom,ycoord= prel
-//	DrawLine 5120,0.0882352941176471,5120,0.988235294117647
-//EndMacro
 
 // -----------------------------------------------------------------------------------		
 // Function that prepares the decoding of the pixel data generated with the 
@@ -191,8 +131,9 @@ end
 //		pixed data, or just one set (SCM_PixDataResorted).
 //
 // ---------------------------------------------------------------------------------- 
-function xzBiSlice_prepareDecode(wStimBufData, wScanPathFuncParams)
+function xyBibi_prepareDecode(wStimBufData, wScanPathFuncParams)
 	wave		wStimBufData, wScanPathFuncParams 
+
 	// Nothing to do
 
 	return SCM_PixDataResorted
@@ -225,17 +166,16 @@ end
 //	Output	:
 //		wImgFrame[][]
 // ---------------------------------------------------------------------------------- 
-function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath, wParams)
+function xyBibi_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath, wParams)
 	wave 	wImgFrame, wImgFrameAv, wPixelDataBlock
 	string	sCurrConfPath
 	wave	wParams
-	
-	variable	nAICh, iAICh
+
+	variable	nAICh, iAICh, j, k
 	variable	pixOffs, pixFrameLen, pixBlockPerChLen 
 	variable	currNFrPerStep, isDispFullFrames
-	variable	n, m, iFr, offsInBuf
-	variable	dZTotal, nImgPerFrame, nBufPerImg
-	variable	dxFrDecoded, dyFrDecoded
+	variable	n, m, dXTotal, dY
+	variable	iFr, nBufPerImg, offsInBuf, nImgPerFrame
 	
 	// Get access to waves within the current scan configuration data folder
 	// using the provided path string
@@ -246,8 +186,9 @@ function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath
 	// Retrieve parameters about the scan configuration 
 	//
 //	nPntsTotal		= wScanPathFuncParams[0]	// = dx*dy*dz *nStimPerFr
-//	dX				= wScanPathFuncParams[1]	// cp.dXPixels
-	dZTotal			= wScanPathFuncParams[3]	// cp.dZPixels
+	dXTotal			= wScanPathFuncParams[1]	// cp.dXPixels
+	dY				= wScanPathFuncParams[2]	// cp.dYPixels
+//	dZTotal			= wScanPathFuncParams[3]	// cp.dZPixels
 //	nPntsRetrace   = wScanPathFuncParams[4]	// cp.nPixRetrace, # of points per line used for retrace	
 //	nPntsLineOffs	= wScanPathFuncParams[5]	// cp.nXPixLineOffs, # of points per line before pixels are aquired
 //	nPntsLineOffs	= wScanPathFuncParams[6]	// cp.nYPixLineOffs, ...
@@ -257,8 +198,8 @@ function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath
 //	zVMinDef		= wScanPathFuncParams[10]	// cp.minDefAO_Lens_V
 //	zVMaxDef		= wScanPathFuncParams[11]	// cp.maxDefAO_Lens_V
 //	nStimPerFr		= wScanPathFuncParams[12]	// cp.stimBufPerFr
-	dxFrDecoded		= wScanPathFuncParams[13]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
-	dyFrDecoded		= wScanPathFuncParams[14]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
+//	dxFrDecoded		= wScanPathFuncParams[13]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
+//	dyFrDecoded		= wScanPathFuncParams[14]	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
 	nImgPerFrame	= wScanPathFuncParams[15]	// cp.nImgPerFrame, # of images per frame
 	
 	// Retrieve more parameters
@@ -272,6 +213,12 @@ function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath
 	isDispFullFrames	= wParams[6]
 	// <---
 
+//	if(wParams[2] < 5000)
+//		print wParams
+//	//	print WaveInfo(wImgFrame, 0)
+//	//	print WaveInfo(wPixelDataBlock, 0)
+//	endif	 
+
 	// Decoding	 ...
 	//
 	iFr			= trunc(pixOffs /pixFrameLen)
@@ -279,7 +226,7 @@ function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath
 	offsInBuf	= pixBlockPerChLen *iAICh	
 	
 	Duplicate/O/FREE/R=[offsInBuf, offsInBuf +pixBlockPerChLen -1] wPixelDataBlock, wPixelDataBlockTemp
-		
+	
 	if(mod(iFr, nImgPerFrame) == 0)
 		// Keep pixel order as is
 		//
@@ -290,41 +237,104 @@ function xzBiSlice_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPath
 		//	
 		m		= mod(pixOffs +pixBlockPerChLen, pixFrameLen)	 			
 		n		= m +pixBlockPerChLen -1
-		Redimension/E=1/N=(dxFrDecoded, dyFrDecoded /nBufPerImg) wPixelDataBlockTemp				
+		Redimension/E=1/N=(dXTotal, dY /nBufPerImg) wPixelDataBlockTemp				
 		ImageTransform flipCols wPixelDataBlockTemp
 		Redimension/E=1/N=(pixBlockPerChLen) wPixelDataBlockTemp
 	endif
 	
-//	if(pixOffs < 25000)
-//		print pixOffs, iFr, m, n, "offsInBuf=",offsInBuf, iAICh, "flip=", mod(iFr, nImgPerFrame), nBufPerImg
-//	//	print pixFrameLen, nImgPerFrame, pixBlockPerChLen 
-// 	//	print DimSize(wPixelDataBlock, 0), DimSize(wPixelDataBlock, 1)
-//	//	print DimSize(wImgFrame, 0), DimSize(wImgFrame, 1)
-//	//	print wParams
-//	endif	
+//	
+//	m	= mod(pixOffs, pixFrameLen)	 			
+//	n	= m +pixBlockPerChLen -1
+
+	// Make pixel buffer copy for line mirroring
+	//
+	Make/FREE/O/N=(pixBlockPerChLen) pwChPixDBTemp
+
+	// Mirror every 2nd line
+	//
+	pwChPixDBTemp[]	= wPixelDataBlock[p +pixBlockPerChLen *iAICh]
+	for(j=dXTotal; j<pixBlockPerChLen; j+=dXTotal*2)
+		k = j +dXTotal -1
+	//	pwChPixDBTemp[j,k] = wPixelDataBlock[j +k +pixBlockPerChLen *iAICh -p] 
+		pwChPixDBTemp[j,k] = wPixelDataBlock[j +1 +k +pixBlockPerChLen *iAICh -p] 
+	endfor	
 	
 	if(currNFrPerStep > 1)
 		// Is z-stack scan with frame averaging, make sure that display
 		// reflects averaging
 		//	
 		if(mod(pixOffs/pixFrameLen, currNFrPerStep) == 0)
-			wImgFrame[m,n]		= wPixelDataBlockTemp[p -m]
+			wImgFrame[m,n]	= pwChPixDBTemp[p]
 		else
-			wImgFrame[m,n]		/= 2					
-			wImgFrame[m,n]		+= wPixelDataBlockTemp[p -m]/2
+			wImgFrame[m,n]	/= 2					
+			wImgFrame[m,n]	+= pwChPixDBTemp[p]/2
 		endif	
 	else
 		// No averaging, just show data
 		//	
 		if(isDispFullFrames)						
-			wImgFrameAv[m,n]	= wPixelDataBlockTemp[p -m]											
+			wImgFrameAv[m,n]	= pwChPixDBTemp[p]									
 			if(mod(pixOffs/pixFrameLen, currNFrPerStep) == 0)				
-				wImgFrame		= wImgFrameAv
+				wImgFrame	= wImgFrameAv
 			endif	
 		else	
-			wImgFrame[m,n]		= wPixelDataBlockTemp[p -m]											
+			wImgFrame[m,n]	= pwChPixDBTemp[p]				
 		endif	
 	endif
+
+//	// Decoding	 ...
+//	//
+//	iFr			= trunc(pixOffs /pixFrameLen)
+//	nBufPerImg	= pixFrameLen /pixBlockPerChLen
+//	offsInBuf	= pixBlockPerChLen *iAICh	
+//	
+//	Duplicate/O/FREE/R=[offsInBuf, offsInBuf +pixBlockPerChLen -1] wPixelDataBlock, wPixelDataBlockTemp
+//		
+//	if(mod(iFr, nImgPerFrame) == 0)
+//		// Keep pixel order as is
+//		//
+//		m		= mod(pixOffs, pixFrameLen)	 			
+//		n		= m +pixBlockPerChLen -1
+//	else
+//		// Mirror pixels along y axis
+//		//	
+//		m		= mod(pixOffs +pixBlockPerChLen, pixFrameLen)	 			
+//		n		= m +pixBlockPerChLen -1
+//		Redimension/E=1/N=(dxFrDecoded, dyFrDecoded /nBufPerImg) wPixelDataBlockTemp				
+//		ImageTransform flipCols wPixelDataBlockTemp
+//		Redimension/E=1/N=(pixBlockPerChLen) wPixelDataBlockTemp
+//	endif
+//	
+////	if(pixOffs < 25000)
+////		print pixOffs, iFr, m, n, "offsInBuf=",offsInBuf, iAICh, "flip=", mod(iFr, nImgPerFrame), nBufPerImg
+////	//	print pixFrameLen, nImgPerFrame, pixBlockPerChLen 
+//// 	//	print DimSize(wPixelDataBlock, 0), DimSize(wPixelDataBlock, 1)
+////	//	print DimSize(wImgFrame, 0), DimSize(wImgFrame, 1)
+////	//	print wParams
+////	endif	
+//	
+//	if(currNFrPerStep > 1)
+//		// Is z-stack scan with frame averaging, make sure that display
+//		// reflects averaging
+//		//	
+//		if(mod(pixOffs/pixFrameLen, currNFrPerStep) == 0)
+//			wImgFrame[m,n]		= wPixelDataBlockTemp[p -m]
+//		else
+//			wImgFrame[m,n]		/= 2					
+//			wImgFrame[m,n]		+= wPixelDataBlockTemp[p -m]/2
+//		endif	
+//	else
+//		// No averaging, just show data
+//		//	
+//		if(isDispFullFrames)						
+//			wImgFrameAv[m,n]	= wPixelDataBlockTemp[p -m]											
+//			if(mod(pixOffs/pixFrameLen, currNFrPerStep) == 0)				
+//				wImgFrame		= wImgFrameAv
+//			endif	
+//		else	
+//			wImgFrame[m,n]		= wPixelDataBlockTemp[p -m]											
+//		endif	
+//	endif
 end
 
 // ---------------------------------------------------------------------------------- 

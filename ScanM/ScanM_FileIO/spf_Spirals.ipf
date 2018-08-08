@@ -207,16 +207,20 @@ end
 function radialScan_prepareDecode(wStimBufData, wScanPathFuncParams)
 	wave		wStimBufData, wScanPathFuncParams 
 
-	variable	dxFrDecoded, dyFrDecoded, noAOCh3_Z
+	variable	dxFrDecoded, dyFrDecoded, noAOCh3_Z, numberOfPoints, flyback, nOffsets, nLayers, itx
 
 	// ---> INPUT
 	// Retrieve parameters about the scan configuration 
 	// a) General parameters for arbitrary scans
 	//    here only: the dimensions of the frame to reconstruct
 	//
+	numberOfPoints		= wScanPathFuncParams[0]	// cp.dXDataPixels, number of pixels per line (w/o retrace)
+	flyback        	= wScanPathFuncParams[1]	// cp.nPixRetrace, number of pixels for retrace
 	dxFrDecoded			= wScanPathFuncParams[4]	// cp.dxFrDecoded, frame width for reconstructed/decoded frame
 	dyFrDecoded			= wScanPathFuncParams[5] 	// cp.dyFrDecoded, frame height for reconstructed/decoded frame
+	nOffsets	    	= wScanPathFuncParams[6]	// Number of rotated offsets
 	noAOCh3_Z			= wScanPathFuncParams[11] 	// cp.noAOCh3_Z, whether the Z channel is being used
+	nLayers				= wScanPathFuncParams[12]
 	
 	//
 	// b) Function-specific, user-defined parameters
@@ -227,22 +231,32 @@ function radialScan_prepareDecode(wStimBufData, wScanPathFuncParams)
 	//
 	// Here, build frequency matrix for scan normalisation	
 	//
-	make/o/n=(dimsize(wStimBufData, 1), 1) countVector = 1
+	variable buffer_length = (NumberofPoints + flyback) * nOffsets
+	make/o/n=(buffer_length, 1) countVector = 1
 	make/o/n=(dxFrDecoded, dyFrDecoded) countMatrix = 0
 	
-	if (dimsize(countVector,0) == dimsize(wStimBufData,1))
+	if (buffer_length * nLayers == dimsize(wStimBufData,1))
 		if (noAOCh3_Z == 1)
 			ScanDecoder(countVector, wStimBufData, countMatrix)
 		else
 			// If the Z-channel is being used
-			// Copy wStimBufData
-			Duplicate/o wStimBufData, wStimBufData_temp
 			
-			// Remove the Z-channel from the duplicate
-			DeletePoints/M=0 3, 1, wStimBufData_temp
-			
-			// Decode input using duplicate
-			ScanDecoder(countVector, wStimBufData_temp, countMatrix)
+			for(itx = 0; itx < nLayers; itx += 1)
+				
+				// Copy wStimBufData
+				Duplicate/o/r=(0, 2)(itx * buffer_length, (itx + 1) * buffer_length - 1) wStimBufData, wStimBufData_temp
+				
+				if(nLayers != 1)
+					wStimBufData_temp[1][] /= nLayers
+					wStimBufData_temp[1][] -= 0.5 - 0.5 / nLayers
+					wStimBufData_temp[1][]	 += itx / nLayers
+				endif
+				
+				// Decode input using duplicate
+				ScanDecoder(countVector, wStimBufData_temp, countMatrix)
+				
+				// killwaves/z wStimBufData_temp
+			endfor
 		endif
 	endif
 	
@@ -289,7 +303,7 @@ function radialScan_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPat
 	variable	dxFrDecoded, dyFrDecoded, nAICh, iAICh, noAOCh3_Z
 	variable 	dataLength, start, stop
 	variable 	nPoints, nOffsets, offset_pixel, data_pixels
-	variable	flyback 
+	variable	flyback, nLayers, buffer_length, itx
 	
 	// Get access to waves within the current scan configuration data folder
 	// using the provided path string
@@ -321,6 +335,8 @@ function radialScan_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPat
 	nAICh				= wParams[0]	// number of AI channels recorded (1..4)
 	iAICh				= wParams[1] 	// index of AI channel to reconstruct (0..3)
 	noAOCh3_Z			= pwScanPathFuncParams[11] 	// cp.noAOCh3_Z, whether the Z channel is being used
+	nLayers				= pwScanPathFuncParams[12]
+	
 	// <---
 	
 //	if(wParams[2] < 5000)
@@ -332,10 +348,12 @@ function radialScan_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPat
 
 	// Initialize 
 	//
-	dataLength 	= dimsize(wPixelDataBlock, 0)/nAICh
+	dataLength 	= dimsize(wPixelDataBlock, 0) / nAICh
 	start = iAICh * dataLength
 	stop = (iAICh + 1) * dataLength - 1
+	
 	nPoints = data_pixels + flyback
+	buffer_length = nPoints * nOffsets
 	
 //	variable timerRefNum,microSeconds
 //	timerRefNum = startMSTimer
@@ -358,21 +376,37 @@ function radialScan_decode(wImgFrame, wImgFrameAv, wPixelDataBlock, sCurrConfPat
 	if (noAOCh3_Z == 1)
 		ScanDecoder(wPixelDataBlockForCh, pwStimBufData, wImgFrame)
 	else
-		// If the Z-channel is being used; Copy wStimBufData
-		Duplicate/o pwStimBufData, wStimBufData_temp
+//		// If the Z-channel is being used; Copy wStimBufData
+//		Duplicate/o pwStimBufData, wStimBufData_temp
+//		
+//		// Remove the Z-channel from the duplicate
+//		// (Seems to alter memory address, causing the decoder confusion)
+//		DeletePoints/M=0 3, 1, wStimBufData_temp
+//		
+//		// Decode input using duplicate
+//		ScanDecoder(wPixelDataBlockForCh, wStimBufData_temp, wImgFrame)
 		
-		// Remove the Z-channel from the duplicate
-		// (Seems to alter memory address, causing the decoder confusion)
-		DeletePoints/M=0 3, 1, wStimBufData_temp
-		
-		// Decode input using duplicate
-		ScanDecoder(wPixelDataBlockForCh, wStimBufData_temp, wImgFrame)
+		for(itx = 0; itx < nLayers; itx += 1)
+			
+			// Copy wStimBufData
+			Duplicate/o/r=(0, 2)(itx * buffer_length, (itx + 1) * buffer_length - 1) pwStimBufData, wStimBufData_temp
+			Duplicate/o/r=(start + itx * buffer_length, start + (itx + 1) * buffer_length - 1)() wPixelDataBlockForCh, wPixelDataBlockForCh_temp
+			
+			if(nLayers != 1)
+				wStimBufData_temp[1][] /= nLayers
+				wStimBufData_temp[1][] -= 0.5 - 0.5 / nLayers
+				wStimBufData_temp[1][]	 += itx / nLayers
+			endif
+			
+			// Decode input using duplicate
+			ScanDecoder(wPixelDataBlockForCh_temp, wStimBufData_temp, wImgFrame)
+			
+			// killwaves/z wStimBufData_temp
+		endfor
 	endif
 	
 	MatrixOp/o wImgFrame = wImgFrame / pCountMatrix
-	
-//	microSeconds = stopMSTimer(timerRefNum)
-//	Print microSeconds/1000
+
 end
 
 // ---------------------------------------------------------------------------------- 
