@@ -2,7 +2,7 @@
 //	Project		: ScanMachine (ScanM)
 //	Module		: ScM_FileIO.ipf
 //	Author		: Thomas Euler
-//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2017
+//	Copyright	: (C) MPImF/Heidelberg, CIN/Uni Tübingen 2009-2018
 //	History		: 2010-10-22 	Creation
 //				  2011-02-13	Modification for "real" SMP files started
 //				  2012-12-18	and before: added new header parameters, 
@@ -23,6 +23,7 @@
 //				  2017-08-19	Added the ability to recreate stimBufData for
 //				  				reconstructing/decoding the scans	
 //				  2017-08-30	Checked for compatibility with older data files
+//				  2018-06-08	Changes to account for ScanWarpParameters ...
 //
 //	Purpose		: Stand-Alone reader/writer for ScanM's SMP files
 //
@@ -55,7 +56,7 @@
 #pragma tGlobals=1		// Use modern global access method.
 
 #ifndef ScM_ipf_present
-strconstant 	SCM_IgorVersion				= "0.2.04"
+strconstant 	SCM_IgorVersion				= "0.2.10"
 #endif
 
 // ----------------------------------------------------------------------------------
@@ -105,7 +106,9 @@ strconstant		SCMIO_otherParamsWaveName		= "wOtherParams"
 
 strconstant		SCMIO_typeKeySep				= ","
 strconstant		SCMIO_keyValueSep				= "="
+strconstant		SCMIO_keySubValueSep			= ":"
 strconstant		SCMIO_entrySep					= ";"
+strconstant		SCMIO_subEntrySep				= "|"
 strconstant		SCMIO_entryFormatStr			= "%s,%s=%s;"
 strconstant		SCMIO_uint32Str				= "UINT32"
 strconstant		SCMIO_uint64Str				= "UINT64"
@@ -142,7 +145,6 @@ constant		ScM_scanMode_TrajectArb		= 6
 constant		ScM_scanType_timelapsed		= 10
 constant		ScM_scanType_zStack			= 11
 // ...
-strconstant	SCM_ScanSeqParamWaveName		= "wScanSeqParams"
 #endif
 
 strconstant 	ScM_CFDNoteStart       		= "CFD_START"	
@@ -169,12 +171,17 @@ EndStructure
 
 // ----------------------------------------------------------------------------------
 strconstant		SCM_usr_AutoScale				= "usr_AutoScale"
-
 function	ScM_UserAutoScaleFunc (wFrame, scaler, newMin, newMax)
 	WAVE		wFrame
 	variable	scaler
 	variable	&newMin, &newMax
 end
+
+strconstant		SCM_usr_FrameDiff				= "usr_FrameDiff"
+function	ScM_UserFrameDiffFunc (wFrame1, wFrame2)
+	WAVE		wFrame1, wFrame2
+end
+
 
 // ----------------------------------------------------------------------------------
 // 	Variable type abbreviations:
@@ -212,7 +219,7 @@ strconstant	SCMIO_key_OversampFactor				= "uOversampling_Factor"
 //strconstant	SCMIO_key_ZCoord_um				= "fZCoord_um"
 //strconstant	SCMIO_key_ZStep_um					= "fZStep_um"
 
-constant		SCMIO_UserParameterCount			= 42
+constant		SCMIO_UserParameterCount			= 43
 strconstant		SCMIO_key_USER_ScanMode			= "uScanMode"
 strconstant		SCMIO_key_USER_ScanType			= "uScanType"
 strconstant		SCMIO_key_USER_dxPix				= "uFrameWidth"
@@ -261,6 +268,8 @@ strconstant		SCMIO_key_USER_ETL_minV			= "fETL_min_V"
 strconstant		SCMIO_key_USER_ETL_maxV			= "fETL_max_V"
 strconstant		SCMIO_key_USER_ETL_neutralV		= "fETL_neutral_V"
 strconstant		SCMIO_key_USER_nImgPerFr			= "unImgPerFr"
+strconstant		SCMIO_key_USER_nWarpParams		= "unWarpParams"
+strconstant		SCMIO_key_USER_WarpParamsStr		= "sWarpParamsStr"
 // ...
 
 //strconstant	SCMIO_key_USER_trajParams_x		= "fTrajParams_%d"
@@ -397,7 +406,7 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDataFolder root:
 	NewDataFolder/S/O $(sDFSMP)
 
-	Make/T/O/N=17 $(SCMIO_StrParamWave)
+	Make/T/O/N=18 $(SCMIO_StrParamWave)
 	wave/T wStrParams	= $(SCMIO_StrParamWave)
 	SetDimLabel 0, 0, GUID,					wStrParams
 	SetDimLabel 0, 1, ComputerName,			wStrParams
@@ -415,10 +424,11 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDimLabel 0,13, IgorGUIVer,				wStrParams	
 	SetDimLabel 0,14, User_Comment,			wStrParams		
 	SetDimLabel 0,15, User_Objective,			wStrParams		
-	SetDimLabel 0,16, RealStimDurList,		wStrParams					
+	SetDimLabel 0,16, RealStimDurList,		wStrParams			
+	SetDimLabel 0,17, User_WarpParamsList,	wStrParams			
 	wStrParams			= ""				
 
-	Make/O/N=61 $(SCMIO_NumParamWave)	
+	Make/O/N=62 $(SCMIO_NumParamWave)	
 	wave wNumParams	= $(SCMIO_NumParamWave)	
 	SetDimLabel 0, 0, HdrLenInValuePairs,	wNumParams				
 	SetDimLabel 0, 1, HdrLenInBytes,			wNumParams		
@@ -487,6 +497,8 @@ function	ScMIO_NewSMPDataFolder (sDFSMP)
 	SetDimLabel 0,59, User_ETL_neutral_V,		wNumParams
 
 	SetDimLabel 0,60, User_nImgPerFr,			wNumParams
+	
+	SetDimLabel 0,61, User_nWarpParams,		wNumParams
 		
 	Make/O/N=(SCMIO_maxStimChans, SCMIO_maxStimBufMapEntries), $(SCMIO_StimBufMapEntrWave)		
 	Make/O/N=(SCMIO_maxTrajParams), $(SCMIO_TrajParamWave)		
@@ -1380,6 +1392,10 @@ static function	ScMIO_HdrStr2Params (s)
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_Objective))
 					pwSP[%User_Objective]			= sVal				
 					nEDone	+= 1
+				elseif(stringmatch(sTemp,	SCMIO_key_USER_WarpParamsStr))
+					pwSP[%User_WarpParamsList]	= sVal		
+					createWarpParamWave(pwSP[%User_WarpParamsList])
+					nEDone	+= 1
 				// <--					
 				endif	
 				break
@@ -1501,6 +1517,9 @@ static function	ScMIO_HdrStr2Params (s)
 					nEDone	+= 1
 				elseif(stringmatch(sTemp,	SCMIO_key_USER_nImgPerFr))
 					pwNP[%User_nImgPerFr]				= str2num(sVal)				
+					nEDone	+= 1
+				elseif(stringmatch(sTemp,	SCMIO_key_USER_nWarpParams))
+					pwNP[%User_nWarpParams]			= str2num(sVal)				
 					nEDone	+= 1
 				// <-- 
 				elseif(stringmatch(sTemp,	SCMIO_key_Unused0))

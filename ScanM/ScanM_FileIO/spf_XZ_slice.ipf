@@ -128,6 +128,14 @@ function xzSlice (wScanPathFuncParams)
 		StimPC[iP, iP+nB-1] 		= StimPC[p-iP]
 	endfor
 	StimZ	+= 	(zVMaxDef-zVMinDef) /2 +zVMinDef
+	
+#ifdef isUseBananaScans	
+	// ##########################
+	// 2018-07-05 ADDED TE ==>
+	//
+	Warp(StimX, StimZ, wScanPathFuncParams, xVMax, zVMax, "xzSlice")
+	// <==
+#endif
 end	
 
 // -----------------------------------------------------------------------------------		
