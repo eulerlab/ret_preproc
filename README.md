@@ -60,9 +60,9 @@ In order for Igor to be able to access the scripts, they have to be copied to th
 
 From your downloaded copy of the repository, copy all the scripts under: `Ret_Preproc/ScM` to `/Wavemetrics/User Procedures/ScanM`, `Ret_Preproc/PreprocExport/Igor to /Wavemetrics/User Procedures/OS`.
 
-> Note: _Please make sure that the respective **folders** under `/Wavemetrics` are called **`ScanM`** and not `ScM`._
-
 In addition, you need to make shortcuts to : `OS/OS_GUI.ipf`, `ScanM/ScanM_FileIO/ScM_FileIO.ipf`, `ScanM/ScanM_formGenerator/ScM_formGenerator_GUI.ipf`. Copy these shortcuts to: `Wavemetrics/Igor Procedures`.
+
+> Note: _Please make sure that the respective **folders** under `/Wavemetrics` are called **`ScanM`** and not `ScM`._
 
 ## Preprocessing Data
 
