@@ -58,7 +58,7 @@ Once this is installed, sign in with a Github account (which you can create for 
 
 In order for Igor to be able to access the scripts, they have to be copied to the appropriate directory. Check that you have a Wavemetrics folder in your My Documents (this should be set up automatically when you install Igor). Make a folder in User Procedures called OS, for the preprocessing scripts, and ScM, for the ScanM file loader and header file writer. 
 
-From your downloaded copy of the repository, copy all the scripts under: `Ret_Preproc/ScM` to `/Wavemetrics/User Procedures/ScanM`, `Ret_Preproc/PreprocExport/Igor to /Wavemetrics/User Procedures/OS`.
+From your downloaded copy of the repository, copy all the scripts under: `Ret_Preproc/ScanM` to `/Wavemetrics/User Procedures/ScanM`, `Ret_Preproc/PreprocExport/Igor` to `/Wavemetrics/User Procedures/OS`.
 
 In addition, you need to make shortcuts to : `OS/OS_GUI.ipf`, `ScanM/ScanM_FileIO/ScM_FileIO.ipf`, `ScanM/ScanM_formGenerator/ScM_formGenerator_GUI.ipf`. Copy these shortcuts to: `Wavemetrics/Igor Procedures`.
 
