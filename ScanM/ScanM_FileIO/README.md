@@ -47,7 +47,7 @@ user-specific files (workspace). The path is usually something like: ```C:\User 
 3. In ```...\Igor Pro 6 User Files\Igor Extensions``` make a shortcut to ```ScanDecoder.xop```.
 
 4. Under ```...\Igor Pro 6 User Files\User Procedures``` create a new folder named ```ScanM``` and copy
-   all files from the ZIP-folder ```ret_preproc-master\ScaM\ScanM_FileIOScanM``` into that folder.
+   all files from the ZIP-folder ```ret_preproc-master\ScaM\ScanM_FileIO``` into that folder.
 
 5. In ```...\Igor Pro 6 User Files\Igor Procedures``` make a shortcut to ```...\Igor Pro 6 User Files\User Procedures\ScanM\ScM_FileIO.ipf```. 
 
