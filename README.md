@@ -25,8 +25,11 @@ Datajoint Homepage: https://datajoint.github.io/
 In order to use the Igor Preprocessing Pipeline, you will need to set up the HDF5 Loader and SARFIA. 
 
 ### HDF5 Loader
+Igor Pro 9 should have this already integrated. 
+In Igor Pro 8 click on `Data\Load Waves\Packages\Install HDF5 Package` and follow the instructions. 
 
-The HDF5 Loader can be added to Igor by going to the Igor installation directory (typically under Program Files/Wavemetrics on your C: drive) and making a shortcut to the file: `\Wavemetrics\...\More Extensions\File Loaders\HDF5`
+In Igor Pro 6, you can do the following:
+The HDF5 Loader can be added to Igor by going to the Igor installation directory (Typically, under Program Files/Wavemetrics on your C: drive) and making a shortcut to the file: `\Wavemetrics\...\More Extensions\File Loaders\HDF5`
 
 And copying this shortcut to: `\User\...\WaveMetrics\Igor Pro 6 User Files\Igor Extensions`
 
@@ -56,11 +59,11 @@ Alternatively, you can download Github for Windows Desktop, from: desktop.github
 
 Once this is installed, sign in with a Github account (which you can create for free if you don't have one), click the '+' symbol in the corner, and then click 'clone repository'. From here it should be possible to enter a repository url; enter the preprocessing repository provided above. The convenience of this method is that you can update to the latest version of the repository by simply clicking 'Sync' in the Github Desktop GUI. Once you have cloned (i.e. copied) the repository, you will be able to find a copy of it in your My Documents, under: `My Documents/Github/Ret_Preproc`
 
-In order for Igor to be able to access the scripts, they have to be copied to the appropriate directory. Check that you have a Wavemetrics folder in your My Documents (this should be set up automatically when you install Igor). Make a folder in User Procedures called OS, for the preprocessing scripts, and ScM, for the ScanM file loader and header file writer. 
+In order for Igor to be able to access the scripts, they have to be copied to the appropriate directory. Check that you have a Wavemetrics folder in your My Documents (this should be set up automatically when you install Igor). In `/WaveMetrics/Igor Pro X User Files/User Procedures` create a folder called `OS`, for the preprocessing scripts, and folder called `ScanM`, for the ScanM file loader and header file writer. 
 
-From your downloaded copy of the repository, copy all the scripts under: `Ret_Preproc/ScanM` to `/Wavemetrics/User Procedures/ScanM`, `Ret_Preproc/PreprocExport/Igor` to `/Wavemetrics/User Procedures/OS`.
+From your downloaded copy of this repository, copy all the scripts under: `ret_preproc/ScanM` to `/WaveMetrics/Igor Pro X User Files/User Procedures/ScanM`, and `ret_preproc/dataProcessing/Igor` to `/WaveMetrics/Igor Pro X User Files/User Procedures/OS`.
 
-In addition, you need to make shortcuts to : `OS/OS_GUI.ipf`, `ScanM/ScanM_FileIO/ScM_FileIO.ipf`, `ScanM/ScanM_formGenerator/ScM_formGenerator_GUI.ipf`. Copy these shortcuts to: `Wavemetrics/Igor Procedures`.
+In addition, in the folder `/WaveMetrics/Igor Pro X User Files/` you need to make shortcuts for: `/User Procedures/OS/OS_GUI.ipf`, `/User Procedures/ScanM/ScanM_FileIO/ScM_FileIO.ipf`, and `/User Procedures/ScanM/ScanM_formGenerator/ScM_formGenerator_GUI.ipf`, and copy these shortcuts to: `Igor Procedures`.
 
 > Note: _Please make sure that the respective **folders** under `/Wavemetrics` are called **`ScanM`** and not `ScM`._
 
